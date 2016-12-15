@@ -1831,6 +1831,7 @@ code.google.com/p/crypto-js/wiki/License
     C.HmacMD5 = Hasher._createHmacHelper(MD5);
 }(Math));
 
+
 /*
 CryptoJS v3.1.2
 code.google.com/p/crypto-js
@@ -2588,7 +2589,6 @@ code.google.com/p/crypto-js/wiki/License
     C.TripleDES = BlockCipher._createHelper(TripleDES);
 }());
 
-
 /*
 CryptoJS v3.1.2
 code.google.com/p/crypto-js
@@ -2698,6 +2698,7 @@ code.google.com/p/crypto-js/wiki/License
         _map: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
     };
 }());
+
 
 /*
 CryptoJS v3.1.2
@@ -2835,6 +2836,7 @@ code.google.com/p/crypto-js/wiki/License
      */
     C.HmacSHA1 = Hasher._createHmacHelper(SHA1);
 }());
+
 
 /*
 CryptoJS v3.1.2
@@ -3021,6 +3023,7 @@ code.google.com/p/crypto-js/wiki/License
      */
     C.HmacSHA256 = Hasher._createHmacHelper(SHA256);
 }(Math));
+
 
 /*
 Copyright (c) 2011, Yahoo! Inc. All rights reserved.
@@ -4301,7 +4304,6 @@ function prng_newstate() {
 // An array of bytes the size of the pool will be passed to init()
 var rng_psize = 256;
 
-
 /*! (c) Tom Wu | http://www-cs-students.stanford.edu/~tjw/jsbn/
  */
 // Random number generator - requires a PRNG backend, e.g. prng4.js
@@ -4813,7 +4815,6 @@ RSAKey.prototype.decrypt = RSADecrypt;
 RSAKey.prototype.decryptOAEP = RSADecryptOAEP;
 //RSAKey.prototype.b64_decrypt = RSAB64Decrypt;
 
-
 /*! (c) Tom Wu | http://www-cs-students.stanford.edu/~tjw/jsbn/
  */
 var b64map="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -4888,7 +4889,6 @@ function b64toBA(s) {
   }
   return a;
 }
-
 
 /*! asn1hex-1.1.4.js (c) 2012-2013 Kenji Urushima | kjur.github.com/jsrsasign/license
  */
@@ -5284,7 +5284,6 @@ function _rsapem_readPrivateKeyFromPEMString(keyPEM) {
 
 RSAKey.prototype.readPrivateKeyFromPEMString = _rsapem_readPrivateKeyFromPEMString;
 RSAKey.prototype.readPrivateKeyFromASN1HexString = _rsapem_readPrivateKeyFromASN1HexString;
-
 
 /*! rsasign-1.2.7.js (c) 2012 Kenji Urushima | kjur.github.com/jsrsasign/license
  */
@@ -5742,6 +5741,2848 @@ RSAKey.SALT_LEN_RECOVER = -2;
  * @class key of RSA public key algorithm
  * @description Tom Wu's RSA Key class and extension
  */
+
+/*! x509-1.1.2.js (c) 2012 Kenji Urushima | kjur.github.com/jsrsasign/license
+ */
+/* 
+ * x509.js - X509 class to read subject public key from certificate.
+ *
+ * Copyright (c) 2010-2013 Kenji Urushima (kenji.urushima@gmail.com)
+ *
+ * This software is licensed under the terms of the MIT License.
+ * http://kjur.github.com/jsrsasign/license
+ *
+ * The above copyright and license notice shall be 
+ * included in all copies or substantial portions of the Software.
+ */
+
+/**
+ * @fileOverview
+ * @name x509-1.1.js
+ * @author Kenji Urushima kenji.urushima@gmail.com
+ * @version x509 1.1.2 (2013-Oct-06)
+ * @since jsrsasign 1.x.x
+ * @license <a href="http://kjur.github.io/jsrsasign/license/">MIT License</a>
+ */
+
+/*
+ * Depends:
+ *   base64.js
+ *   rsa.js
+ *   asn1hex.js
+ */
+
+/**
+ * X.509 certificate class.<br/>
+ * @class X.509 certificate class
+ * @property {RSAKey} subjectPublicKeyRSA Tom Wu's RSAKey object
+ * @property {String} subjectPublicKeyRSA_hN hexadecimal string for modulus of RSA public key
+ * @property {String} subjectPublicKeyRSA_hE hexadecimal string for public exponent of RSA public key
+ * @property {String} hex hexacedimal string for X.509 certificate.
+ * @author Kenji Urushima
+ * @version 1.0.1 (08 May 2012)
+ * @see <a href="http://kjur.github.com/jsrsasigns/">'jwrsasign'(RSA Sign JavaScript Library) home page http://kjur.github.com/jsrsasign/</a>
+ */
+function X509() {
+    this.subjectPublicKeyRSA = null;
+    this.subjectPublicKeyRSA_hN = null;
+    this.subjectPublicKeyRSA_hE = null;
+    this.hex = null;
+
+    // ===== get basic fields from hex =====================================
+
+    /**
+     * get hexadecimal string of serialNumber field of certificate.<br/>
+     * @name getSerialNumberHex
+     * @memberOf X509#
+     * @function
+     */
+    this.getSerialNumberHex = function() {
+    return ASN1HEX.getDecendantHexVByNthList(this.hex, 0, [0, 1]);
+    };
+
+    /**
+     * get hexadecimal string of issuer field of certificate.<br/>
+     * @name getIssuerHex
+     * @memberOf X509#
+     * @function
+     */
+    this.getIssuerHex = function() {
+    return ASN1HEX.getDecendantHexTLVByNthList(this.hex, 0, [0, 3]);
+    };
+
+    /**
+     * get string of issuer field of certificate.<br/>
+     * @name getIssuerString
+     * @memberOf X509#
+     * @function
+     */
+    this.getIssuerString = function() {
+    return X509.hex2dn(ASN1HEX.getDecendantHexTLVByNthList(this.hex, 0, [0, 3]));
+    };
+
+    /**
+     * get hexadecimal string of subject field of certificate.<br/>
+     * @name getSubjectHex
+     * @memberOf X509#
+     * @function
+     */
+    this.getSubjectHex = function() {
+    return ASN1HEX.getDecendantHexTLVByNthList(this.hex, 0, [0, 5]);
+    };
+
+    /**
+     * get string of subject field of certificate.<br/>
+     * @name getSubjectString
+     * @memberOf X509#
+     * @function
+     */
+    this.getSubjectString = function() {
+    return X509.hex2dn(ASN1HEX.getDecendantHexTLVByNthList(this.hex, 0, [0, 5]));
+    };
+
+    /**
+     * get notBefore field string of certificate.<br/>
+     * @name getNotBefore
+     * @memberOf X509#
+     * @function
+     */
+    this.getNotBefore = function() {
+    var s = ASN1HEX.getDecendantHexVByNthList(this.hex, 0, [0, 4, 0]);
+    s = s.replace(/(..)/g, "%$1");
+    s = decodeURIComponent(s);
+    return s;
+    };
+
+    /**
+     * get notAfter field string of certificate.<br/>
+     * @name getNotAfter
+     * @memberOf X509#
+     * @function
+     */
+    this.getNotAfter = function() {
+    var s = ASN1HEX.getDecendantHexVByNthList(this.hex, 0, [0, 4, 1]);
+    s = s.replace(/(..)/g, "%$1");
+    s = decodeURIComponent(s);
+    return s;
+    };
+
+    // ===== read certificate public key ==========================
+
+    // ===== read certificate =====================================
+    /**
+     * read PEM formatted X.509 certificate from string.<br/>
+     * @name readCertPEM
+     * @memberOf X509#
+     * @function
+     * @param {String} sCertPEM string for PEM formatted X.509 certificate
+     */
+    this.readCertPEM = function(sCertPEM) {
+    var hCert = X509.pemToHex(sCertPEM);
+    var a = X509.getPublicKeyHexArrayFromCertHex(hCert);
+    var rsa = new RSAKey();
+    rsa.setPublic(a[0], a[1]);
+    this.subjectPublicKeyRSA = rsa;
+    this.subjectPublicKeyRSA_hN = a[0];
+    this.subjectPublicKeyRSA_hE = a[1];
+    this.hex = hCert;
+    };
+
+    this.readCertPEMWithoutRSAInit = function(sCertPEM) {
+    var hCert = X509.pemToHex(sCertPEM);
+    var a = X509.getPublicKeyHexArrayFromCertHex(hCert);
+    this.subjectPublicKeyRSA.setPublic(a[0], a[1]);
+    this.subjectPublicKeyRSA_hN = a[0];
+    this.subjectPublicKeyRSA_hE = a[1];
+    this.hex = hCert;
+    };
+};
+
+X509.pemToBase64 = function(sCertPEM) {
+    var s = sCertPEM;
+    s = s.replace("-----BEGIN CERTIFICATE-----", "");
+    s = s.replace("-----END CERTIFICATE-----", "");
+    s = s.replace(/[ \n]+/g, "");
+    return s;
+};
+
+X509.pemToHex = function(sCertPEM) {
+    var b64Cert = X509.pemToBase64(sCertPEM);
+    var hCert = b64tohex(b64Cert);
+    return hCert;
+};
+
+// NOTE: Without BITSTRING encapsulation.
+X509.getSubjectPublicKeyPosFromCertHex = function(hCert) {
+    var pInfo = X509.getSubjectPublicKeyInfoPosFromCertHex(hCert);
+    if (pInfo == -1) return -1;    
+    var a = ASN1HEX.getPosArrayOfChildren_AtObj(hCert, pInfo); 
+    if (a.length != 2) return -1;
+    var pBitString = a[1];
+    if (hCert.substring(pBitString, pBitString + 2) != '03') return -1;
+    var pBitStringV = ASN1HEX.getStartPosOfV_AtObj(hCert, pBitString);
+    
+    if (hCert.substring(pBitStringV, pBitStringV + 2) != '00') return -1;
+    return pBitStringV + 2;
+};
+
+// NOTE: privateKeyUsagePeriod field of X509v2 not supported.
+// NOTE: v1 and v3 supported
+X509.getSubjectPublicKeyInfoPosFromCertHex = function(hCert) {
+    var pTbsCert = ASN1HEX.getStartPosOfV_AtObj(hCert, 0);
+    var a = ASN1HEX.getPosArrayOfChildren_AtObj(hCert, pTbsCert); 
+    if (a.length < 1) return -1;
+    if (hCert.substring(a[0], a[0] + 10) == "a003020102") { // v3
+    if (a.length < 6) return -1;
+    return a[6];
+    } else {
+    if (a.length < 5) return -1;
+    return a[5];
+    }
+};
+
+X509.getPublicKeyHexArrayFromCertHex = function(hCert) {
+    var p = X509.getSubjectPublicKeyPosFromCertHex(hCert);
+    var a = ASN1HEX.getPosArrayOfChildren_AtObj(hCert, p); 
+    if (a.length != 2) return [];
+    var hN = ASN1HEX.getHexOfV_AtObj(hCert, a[0]);
+    var hE = ASN1HEX.getHexOfV_AtObj(hCert, a[1]);
+    if (hN != null && hE != null) {
+    return [hN, hE];
+    } else {
+    return [];
+    }
+};
+
+X509.getHexTbsCertificateFromCert = function(hCert) {
+    var pTbsCert = ASN1HEX.getStartPosOfV_AtObj(hCert, 0);
+    return pTbsCert;
+};
+
+X509.getPublicKeyHexArrayFromCertPEM = function(sCertPEM) {
+    var hCert = X509.pemToHex(sCertPEM);
+    var a = X509.getPublicKeyHexArrayFromCertHex(hCert);
+    return a;
+};
+
+X509.hex2dn = function(hDN) {
+    var s = "";
+    var a = ASN1HEX.getPosArrayOfChildren_AtObj(hDN, 0);
+    for (var i = 0; i < a.length; i++) {
+    var hRDN = ASN1HEX.getHexOfTLV_AtObj(hDN, a[i]);
+    s = s + "/" + X509.hex2rdn(hRDN);
+    }
+    return s;
+};
+
+X509.hex2rdn = function(hRDN) {
+    var hType = ASN1HEX.getDecendantHexTLVByNthList(hRDN, 0, [0, 0]);
+    var hValue = ASN1HEX.getDecendantHexVByNthList(hRDN, 0, [0, 1]);
+    var type = "";
+    try { type = X509.DN_ATTRHEX[hType]; } catch (ex) { type = hType; }
+    hValue = hValue.replace(/(..)/g, "%$1");
+    var value = decodeURIComponent(hValue);
+    return type + "=" + value;
+};
+
+X509.DN_ATTRHEX = {
+    "0603550406": "C",
+    "060355040a": "O",
+    "060355040b": "OU",
+    "0603550403": "CN",
+    "0603550405": "SN",
+    "0603550408": "ST",
+    "0603550407": "L",
+};
+
+/**
+ * get RSAKey/ECDSA public key object from PEM certificate string
+ * @name getPublicKeyFromCertPEM
+ * @memberOf X509
+ * @function
+ * @param {String} sCertPEM PEM formatted RSA/ECDSA/DSA X.509 certificate
+ * @return returns RSAKey/KJUR.crypto.{ECDSA,DSA} object of public key
+ * @since x509 1.1.1
+ * @description
+ * NOTE: DSA is also supported since x509 1.1.2.
+ */
+X509.getPublicKeyFromCertPEM = function(sCertPEM) {
+    var info = X509.getPublicKeyInfoPropOfCertPEM(sCertPEM);
+
+    if (info.algoid == "2a864886f70d010101") { // RSA
+    var aRSA = KEYUTIL.parsePublicRawRSAKeyHex(info.keyhex);
+    var key = new RSAKey();
+    key.setPublic(aRSA.n, aRSA.e);
+    return key;
+    } else if (info.algoid == "2a8648ce3d0201") { // ECC
+    var curveName = KJUR.crypto.OID.oidhex2name[info.algparam];
+    var key = new KJUR.crypto.ECDSA({'curve': curveName, 'info': info.keyhex});
+        key.setPublicKeyHex(info.keyhex);
+    return key;
+    } else if (info.algoid == "2a8648ce380401") { // DSA 1.2.840.10040.4.1
+    var p = ASN1HEX.getVbyList(info.algparam, 0, [0], "02");
+    var q = ASN1HEX.getVbyList(info.algparam, 0, [1], "02");
+    var g = ASN1HEX.getVbyList(info.algparam, 0, [2], "02");
+    var y = ASN1HEX.getHexOfV_AtObj(info.keyhex, 0);
+    y = y.substr(2);
+    var key = new KJUR.crypto.DSA();
+    key.setPublic(new BigInteger(p, 16),
+              new BigInteger(q, 16),
+              new BigInteger(g, 16),
+              new BigInteger(y, 16));
+    return key;
+    } else {
+    throw "unsupported key";
+    }
+};
+
+/**
+ * get public key information from PEM certificate
+ * @name getPublicKeyInfoPropOfCertPEM
+ * @memberOf X509
+ * @function
+ * @param {String} sCertPEM string of PEM formatted certificate
+ * @return {Hash} hash of information for public key
+ * @since x509 1.1.1
+ * @description
+ * Resulted associative array has following properties:
+ * <ul>
+ * <li>algoid - hexadecimal string of OID of asymmetric key algorithm</li>
+ * <li>algparam - hexadecimal string of OID of ECC curve name or null</li>
+ * <li>keyhex - hexadecimal string of key in the certificate</li>
+ * </ul>
+ * @since x509 1.1.1
+ */
+X509.getPublicKeyInfoPropOfCertPEM = function(sCertPEM) {
+    var result = {};
+    result.algparam = null;
+    var hCert = X509.pemToHex(sCertPEM);
+
+    // 1. Certificate ASN.1
+    var a1 = ASN1HEX.getPosArrayOfChildren_AtObj(hCert, 0); 
+    if (a1.length != 3)
+    throw "malformed X.509 certificate PEM (code:001)"; // not 3 item of seq Cert
+
+    // 2. tbsCertificate
+    if (hCert.substr(a1[0], 2) != "30")
+    throw "malformed X.509 certificate PEM (code:002)"; // tbsCert not seq 
+
+    var a2 = ASN1HEX.getPosArrayOfChildren_AtObj(hCert, a1[0]); 
+
+    // 3. subjectPublicKeyInfo
+    if (a2.length < 7)
+    throw "malformed X.509 certificate PEM (code:003)"; // no subjPubKeyInfo
+
+    var a3 = ASN1HEX.getPosArrayOfChildren_AtObj(hCert, a2[6]); 
+
+    if (a3.length != 2)
+    throw "malformed X.509 certificate PEM (code:004)"; // not AlgId and PubKey
+
+    // 4. AlgId
+    var a4 = ASN1HEX.getPosArrayOfChildren_AtObj(hCert, a3[0]); 
+
+    if (a4.length != 2)
+    throw "malformed X.509 certificate PEM (code:005)"; // not 2 item in AlgId
+
+    result.algoid = ASN1HEX.getHexOfV_AtObj(hCert, a4[0]);
+
+    if (hCert.substr(a4[1], 2) == "06") { // EC
+    result.algparam = ASN1HEX.getHexOfV_AtObj(hCert, a4[1]);
+    } else if (hCert.substr(a4[1], 2) == "30") { // DSA
+    result.algparam = ASN1HEX.getHexOfTLV_AtObj(hCert, a4[1]);
+    }
+
+    // 5. Public Key Hex
+    if (hCert.substr(a3[1], 02) != "03")
+    throw "malformed X.509 certificate PEM (code:006)"; // not bitstring
+
+    var unusedBitAndKeyHex = ASN1HEX.getHexOfV_AtObj(hCert, a3[1]);
+    result.keyhex = unusedBitAndKeyHex.substr(2);
+
+    return result;
+};
+
+/*
+X509.prototype.readCertPEM = _x509_readCertPEM;
+X509.prototype.readCertPEMWithoutRSAInit = _x509_readCertPEMWithoutRSAInit;
+X509.prototype.getSerialNumberHex = _x509_getSerialNumberHex;
+X509.prototype.getIssuerHex = _x509_getIssuerHex;
+X509.prototype.getSubjectHex = _x509_getSubjectHex;
+X509.prototype.getIssuerString = _x509_getIssuerString;
+X509.prototype.getSubjectString = _x509_getSubjectString;
+X509.prototype.getNotBefore = _x509_getNotBefore;
+X509.prototype.getNotAfter = _x509_getNotAfter;
+*/
+
+/*! pkcs5pkey-1.0.5.js (c) 2013 Kenji Urushima | kjur.github.com/jsrsasign/license
+ */
+/*
+ * pkcs5pkey.js - reading passcode protected PKCS#5 PEM formatted RSA private key
+ *
+ * Copyright (c) 2013 Kenji Urushima (kenji.urushima@gmail.com)
+ *
+ * This software is licensed under the terms of the MIT License.
+ * http://kjur.github.com/jsrsasign/license
+ *
+ * The above copyright and license notice shall be 
+ * included in all copies or substantial portions of the Software.
+ */
+/**
+ * @fileOverview
+ * @name pkcs5pkey-1.0.js
+ * @author Kenji Urushima kenji.urushima@gmail.com
+ * @version pkcs5pkey 1.0.5 (2013-Aug-20)
+ * @since jsrsasign 2.0.0
+ * @license <a href="http://kjur.github.io/jsrsasign/license/">MIT License</a>
+ */
+
+/**
+ * @name PKCS5PKEY
+ * @class class for PKCS#5 and PKCS#8 private key 
+ * @deprecated Since jsrsasign 4.1.3. Please use KEYUTIL class.
+ * @description 
+ * <br/>
+ * {@link PKCS5PKEY} class has following features:
+ * <ul>
+ * <li>read and parse PEM formatted encrypted PKCS#5 private key
+ * <li>generate PEM formatted encrypted PKCS#5 private key
+ * <li>read and parse PEM formatted plain PKCS#8 private key
+ * <li>read and parse PEM formatted encrypted PKCS#8 private key by PBKDF2/HmacSHA1/3DES
+ * </ul>
+ * Currently supports only RSA private key and
+ * following symmetric key algorithms to protect private key.
+ * <ul>
+ * <li>DES-EDE3-CBC</li>
+ * <li>AES-256-CBC</li>
+ * <li>AES-192-CBC</li>
+ * <li>AES-128-CBC</li>
+ * </ul>
+ * 
+ * <h5>METHOD SUMMARY</h5>
+ * <dl>
+ * <dt><b>PKCS8 PRIVATE KEY METHODS</b><dd>
+ * <ul>
+ * <li>{@link PKCS5PKEY.getRSAKeyFromPlainPKCS8PEM} - convert plain PKCS8 PEM to RSAKey object</li>
+ * <li>{@link PKCS5PKEY.getRSAKeyFromPlainPKCS8Hex} - convert plain PKCS8 hexadecimal data to RSAKey object</li>
+ * <li>{@link PKCS5PKEY.getRSAKeyFromEncryptedPKCS8PEM} - convert encrypted PKCS8 PEM to RSAKey object</li>
+ * <li>{@link PKCS5PKEY.getPlainPKCS8HexFromEncryptedPKCS8PEM} - convert encrypted PKCS8 PEM to plain PKCS8 Hex</li>
+ * </ul>
+ * <dt><b>PKCS5 PRIVATE KEY METHODS</b><dd>
+ * <ul>
+ * <li>{@link PKCS5PKEY.getRSAKeyFromEncryptedPKCS5PEM} - convert encrypted PKCS5 PEM to RSAKey object</li>
+ * <li>{@link PKCS5PKEY.getEncryptedPKCS5PEMFromRSAKey} - convert RSAKey object to encryped PKCS5 PEM</li>
+ * <li>{@link PKCS5PKEY.newEncryptedPKCS5PEM} - generate RSAKey and its encrypted PKCS5 PEM</li>
+ * </ul>
+ * <dt><b>PKCS8 PUBLIC KEY METHODS</b><dd>
+ * <ul>
+ * <li>{@link PKCS5PKEY.getKeyFromPublicPKCS8PEM} - convert encrypted PKCS8 PEM to RSAKey/ECDSA object</li>
+ * <li>{@link PKCS5PKEY.getKeyFromPublicPKCS8Hex} - convert encrypted PKCS8 Hex to RSAKey/ECDSA object</li>
+ * <li>{@link PKCS5PKEY.getRSAKeyFromPublicPKCS8PEM} - convert encrypted PKCS8 PEM to RSAKey object</li>
+ * <li>{@link PKCS5PKEY.getRSAKeyFromPublicPKCS8Hex} - convert encrypted PKCS8 Hex to RSAKey object</li>
+ * </ul>
+ * <dt><b>UTITILIY METHODS</b><dd>
+ * <ul>
+ * <li>{@link PKCS5PKEY.getHexFromPEM} - convert PEM string to hexadecimal data</li>
+ * <li>{@link PKCS5PKEY.getDecryptedKeyHexByKeyIV} - decrypt key by sharedKey and IV</li>
+ * </ul>
+ * </dl>
+ * 
+ * @example
+ * Here is an example of PEM formatted encrypted PKCS#5 private key.
+ * -----BEGIN RSA PRIVATE KEY-----
+ * Proc-Type: 4,ENCRYPTED
+ * DEK-Info: AES-256-CBC,40555967F759530864FE022E257DE34E
+ *
+ * jV7uXajRw4cccDaliagcqiLOiQEUCe19l761pXRxzgQP+DH4rCi12T4puTdZyy6l
+ *          ...(snip)...
+ * qxLS+BASmyGm4DME6m+kltZ12LXwPgNU6+d+XQ4NXSA=
+ *-----END RSA PRIVATE KEY-----
+ */
+var PKCS5PKEY = function() {
+    // *****************************************************************
+    // *** PRIVATE PROPERTIES AND METHODS *******************************
+    // *****************************************************************
+    // shared key decryption ------------------------------------------
+    var decryptAES = function(dataHex, keyHex, ivHex) {
+    return decryptGeneral(CryptoJS.AES, dataHex, keyHex, ivHex);
+    };
+
+    var decrypt3DES = function(dataHex, keyHex, ivHex) {
+    return decryptGeneral(CryptoJS.TripleDES, dataHex, keyHex, ivHex);
+    };
+
+    var decryptGeneral = function(f, dataHex, keyHex, ivHex) {
+    var data = CryptoJS.enc.Hex.parse(dataHex);
+    var key = CryptoJS.enc.Hex.parse(keyHex);
+    var iv = CryptoJS.enc.Hex.parse(ivHex);
+    var encrypted = {};
+    encrypted.key = key;
+    encrypted.iv = iv;
+    encrypted.ciphertext = data;
+    var decrypted = f.decrypt(encrypted, key, { iv: iv });
+    return CryptoJS.enc.Hex.stringify(decrypted);
+    };
+
+    // shared key decryption ------------------------------------------
+    var encryptAES = function(dataHex, keyHex, ivHex) {
+    return encryptGeneral(CryptoJS.AES, dataHex, keyHex, ivHex);
+    };
+
+    var encrypt3DES = function(dataHex, keyHex, ivHex) {
+    return encryptGeneral(CryptoJS.TripleDES, dataHex, keyHex, ivHex);
+    };
+
+    var encryptGeneral = function(f, dataHex, keyHex, ivHex) {
+    var data = CryptoJS.enc.Hex.parse(dataHex);
+    var key = CryptoJS.enc.Hex.parse(keyHex);
+    var iv = CryptoJS.enc.Hex.parse(ivHex);
+    var msg = {};
+    var encryptedHex = f.encrypt(data, key, { iv: iv });
+        var encryptedWA = CryptoJS.enc.Hex.parse(encryptedHex.toString());
+        var encryptedB64 = CryptoJS.enc.Base64.stringify(encryptedWA);
+    return encryptedB64;
+    };
+
+    // other methods and properties ----------------------------------------
+    var ALGLIST = {
+    'AES-256-CBC': { 'proc': decryptAES, 'eproc': encryptAES, keylen: 32, ivlen: 16 },
+    'AES-192-CBC': { 'proc': decryptAES, 'eproc': encryptAES, keylen: 24, ivlen: 16 },
+    'AES-128-CBC': { 'proc': decryptAES, 'eproc': encryptAES, keylen: 16, ivlen: 16 },
+    'DES-EDE3-CBC': { 'proc': decrypt3DES, 'eproc': encrypt3DES, keylen: 24, ivlen: 8 }
+    };
+
+    var getFuncByName = function(algName) {
+    return ALGLIST[algName]['proc'];
+    };
+
+    var _generateIvSaltHex = function(numBytes) {
+    var wa = CryptoJS.lib.WordArray.random(numBytes);
+    var hex = CryptoJS.enc.Hex.stringify(wa);
+    return hex;
+    };
+
+    var _parsePKCS5PEM = function(sPKCS5PEM) {
+    var info = {};
+    if (sPKCS5PEM.match(new RegExp("DEK-Info: ([^,]+),([0-9A-Fa-f]+)", "m"))) {
+        info.cipher = RegExp.$1;
+        info.ivsalt = RegExp.$2;
+    }
+    if (sPKCS5PEM.match(new RegExp("-----BEGIN ([A-Z]+) PRIVATE KEY-----"))) {
+        info.type = RegExp.$1;
+    }
+    var i1 = -1;
+    var lenNEWLINE = 0;
+    if (sPKCS5PEM.indexOf("\r\n\r\n") != -1) {
+        i1 = sPKCS5PEM.indexOf("\r\n\r\n");
+        lenNEWLINE = 2;
+    }
+    if (sPKCS5PEM.indexOf("\n\n") != -1) {
+        i1 = sPKCS5PEM.indexOf("\n\n");
+        lenNEWLINE = 1;
+    }
+    var i2 = sPKCS5PEM.indexOf("-----END");
+    if (i1 != -1 && i2 != -1) {
+        var s = sPKCS5PEM.substring(i1 + lenNEWLINE * 2, i2 - lenNEWLINE);
+        s = s.replace(/\s+/g, '');
+        info.data = s;
+    }
+    return info;
+    };
+
+    var _getKeyAndUnusedIvByPasscodeAndIvsalt = function(algName, passcode, ivsaltHex) {
+    //alert("ivsaltHex(2) = " + ivsaltHex);
+    var saltHex = ivsaltHex.substring(0, 16);
+    //alert("salt = " + saltHex);
+        
+    var salt = CryptoJS.enc.Hex.parse(saltHex);
+    var data = CryptoJS.enc.Utf8.parse(passcode);
+    //alert("salt = " + salt);
+    //alert("data = " + data);
+
+    var nRequiredBytes = ALGLIST[algName]['keylen'] + ALGLIST[algName]['ivlen'];
+    var hHexValueJoined = '';
+    var hLastValue = null;
+    //alert("nRequiredBytes = " + nRequiredBytes);
+    for (;;) {
+        var h = CryptoJS.algo.MD5.create();
+        if (hLastValue != null) {
+        h.update(hLastValue);
+        }
+        h.update(data);
+        h.update(salt);
+        hLastValue = h.finalize();
+        hHexValueJoined = hHexValueJoined + CryptoJS.enc.Hex.stringify(hLastValue);
+        //alert("joined = " + hHexValueJoined);
+        if (hHexValueJoined.length >= nRequiredBytes * 2) {
+        break;
+        }
+    }
+    var result = {};
+    result.keyhex = hHexValueJoined.substr(0, ALGLIST[algName]['keylen'] * 2);
+    result.ivhex = hHexValueJoined.substr(ALGLIST[algName]['keylen'] * 2, ALGLIST[algName]['ivlen'] * 2);
+    return result;
+    };
+
+    /*
+     * @param {String} privateKeyB64 base64 string of encrypted private key
+     * @param {String} sharedKeyAlgName algorithm name of shared key encryption
+     * @param {String} sharedKeyHex hexadecimal string of shared key to encrypt
+     * @param {String} ivsaltHex hexadecimal string of IV and salt
+     * @param {String} hexadecimal string of decrypted private key
+     */
+    var _decryptKeyB64 = function(privateKeyB64, sharedKeyAlgName, sharedKeyHex, ivsaltHex) {
+    var privateKeyWA = CryptoJS.enc.Base64.parse(privateKeyB64);
+    var privateKeyHex = CryptoJS.enc.Hex.stringify(privateKeyWA);
+    var f = ALGLIST[sharedKeyAlgName]['proc'];
+    var decryptedKeyHex = f(privateKeyHex, sharedKeyHex, ivsaltHex);
+    return decryptedKeyHex;
+    };
+    
+    /*
+     * @param {String} privateKeyHex hexadecimal string of private key
+     * @param {String} sharedKeyAlgName algorithm name of shared key encryption
+     * @param {String} sharedKeyHex hexadecimal string of shared key to encrypt
+     * @param {String} ivsaltHex hexadecimal string of IV and salt
+     * @param {String} base64 string of encrypted private key
+     */
+    var _encryptKeyHex = function(privateKeyHex, sharedKeyAlgName, sharedKeyHex, ivsaltHex) {
+    var f = ALGLIST[sharedKeyAlgName]['eproc'];
+    var encryptedKeyB64 = f(privateKeyHex, sharedKeyHex, ivsaltHex);
+    return encryptedKeyB64;
+    };
+
+    // *****************************************************************
+    // *** PUBLIC PROPERTIES AND METHODS *******************************
+    // *****************************************************************
+    return {
+        // -- UTILITY METHODS ------------------------------------------------------------
+    /**
+         * decrypt private key by shared key
+     * @name version
+     * @memberOf PKCS5PKEY
+     * @property {String} version
+     * @description version string of PKCS5PKEY class
+     */
+    version: "1.0.5",
+
+    /**
+         * get hexacedimal string of PEM format
+     * @name getHexFromPEM
+     * @memberOf PKCS5PKEY
+     * @function
+     * @param {String} sPEM PEM formatted string
+     * @param {String} sHead PEM header string without BEGIN/END
+     * @return {String} hexadecimal string data of PEM contents
+     * @since pkcs5pkey 1.0.5
+     */
+        getHexFromPEM: function(sPEM, sHead) {
+        var s = sPEM;
+        if (s.indexOf("BEGIN " + sHead) == -1) {
+        throw "can't find PEM header: " + sHead;
+        }
+        s = s.replace("-----BEGIN " + sHead + "-----", "");
+        s = s.replace("-----END " + sHead + "-----", "");
+        var sB64 = s.replace(/\s+/g, '');
+            var dataHex = b64tohex(sB64);
+        return dataHex;
+    },
+
+    /**
+         * decrypt private key by shared key
+     * @name getDecryptedKeyHexByKeyIV
+     * @memberOf PKCS5PKEY
+     * @function
+     * @param {String} encryptedKeyHex hexadecimal string of encrypted private key
+     * @param {String} algName name of symmetric key algorithm (ex. 'DES-EBE3-CBC')
+     * @param {String} sharedKeyHex hexadecimal string of symmetric key
+     * @param {String} ivHex hexadecimal string of initial vector(IV).
+     * @return {String} hexadecimal string of decrypted privated key
+     */
+    getDecryptedKeyHexByKeyIV: function(encryptedKeyHex, algName, sharedKeyHex, ivHex) {
+        var f1 = getFuncByName(algName);
+        return f1(encryptedKeyHex, sharedKeyHex, ivHex);
+    },
+
+    /**
+         * parse PEM formatted passcode protected PKCS#5 private key
+     * @name parsePKCS5PEM
+     * @memberOf PKCS5PKEY
+     * @function
+     * @param {String} sEncryptedPEM PEM formatted protected passcode protected PKCS#5 private key
+     * @return {Hash} hash of key information
+     * @description
+         * Resulted hash has following attributes.
+     * <ul>
+     * <li>cipher - symmetric key algorithm name (ex. 'DES-EBE3-CBC', 'AES-256-CBC')</li>
+     * <li>ivsalt - IV used for decrypt. Its heading 8 bytes will be used for passcode salt.</li>
+     * <li>type - asymmetric key algorithm name of private key described in PEM header.</li>
+     * <li>data - base64 encoded encrypted private key.</li>
+     * </ul>
+         *
+     */
+        parsePKCS5PEM: function(sPKCS5PEM) {
+        return _parsePKCS5PEM(sPKCS5PEM);
+    },
+
+    /**
+         * the same function as OpenSSL EVP_BytsToKey to generate shared key and IV
+     * @name getKeyAndUnusedIvByPasscodeAndIvsalt
+     * @memberOf PKCS5PKEY
+     * @function
+     * @param {String} algName name of symmetric key algorithm (ex. 'DES-EBE3-CBC')
+     * @param {String} passcode passcode to decrypt private key (ex. 'password')
+     * @param {String} hexadecimal string of IV. heading 8 bytes will be used for passcode salt
+     * @return {Hash} hash of key and unused IV (ex. {keyhex:2fe3..., ivhex:3fad..})
+     */
+    getKeyAndUnusedIvByPasscodeAndIvsalt: function(algName, passcode, ivsaltHex) {
+        return _getKeyAndUnusedIvByPasscodeAndIvsalt(algName, passcode, ivsaltHex);
+    },
+
+        decryptKeyB64: function(privateKeyB64, sharedKeyAlgName, sharedKeyHex, ivsaltHex) {
+        return _decryptKeyB64(privateKeyB64, sharedKeyAlgName, sharedKeyHex, ivsaltHex);
+        },
+
+    /**
+         * decrypt PEM formatted protected PKCS#5 private key with passcode
+     * @name getDecryptedKeyHex
+     * @memberOf PKCS5PKEY
+     * @function
+     * @param {String} sEncryptedPEM PEM formatted protected passcode protected PKCS#5 private key
+     * @param {String} passcode passcode to decrypt private key (ex. 'password')
+     * @return {String} hexadecimal string of decrypted RSA priavte key
+     */
+    getDecryptedKeyHex: function(sEncryptedPEM, passcode) {
+        // 1. parse pem
+        var info = _parsePKCS5PEM(sEncryptedPEM);
+        var publicKeyAlgName = info.type;
+        var sharedKeyAlgName = info.cipher;
+        var ivsaltHex = info.ivsalt;
+        var privateKeyB64 = info.data;
+        //alert("ivsaltHex = " + ivsaltHex);
+
+        // 2. generate shared key
+        var sharedKeyInfo = _getKeyAndUnusedIvByPasscodeAndIvsalt(sharedKeyAlgName, passcode, ivsaltHex);
+        var sharedKeyHex = sharedKeyInfo.keyhex;
+        //alert("sharedKeyHex = " + sharedKeyHex);
+
+        // 3. decrypt private key
+            var decryptedKey = _decryptKeyB64(privateKeyB64, sharedKeyAlgName, sharedKeyHex, ivsaltHex);
+        return decryptedKey;
+    },
+
+    /**
+         * read PEM formatted encrypted PKCS#5 private key and returns RSAKey object
+     * @name getRSAKeyFromEncryptedPKCS5PEM
+     * @memberOf PKCS5PKEY
+     * @function
+     * @param {String} sEncryptedP5PEM PEM formatted encrypted PKCS#5 private key
+     * @param {String} passcode passcode to decrypt private key
+     * @return {RSAKey} loaded RSAKey object of RSA private key
+         * @since pkcs5pkey 1.0.2
+     */
+    getRSAKeyFromEncryptedPKCS5PEM: function(sEncryptedP5PEM, passcode) {
+        var hPKey = this.getDecryptedKeyHex(sEncryptedP5PEM, passcode);
+        var rsaKey = new RSAKey();
+        rsaKey.readPrivateKeyFromASN1HexString(hPKey);
+        return rsaKey;
+    },
+
+    /**
+         * get PEM formatted encrypted PKCS#5 private key from hexadecimal string of plain private key
+     * @name getEryptedPKCS5PEMFromPrvKeyHex
+     * @memberOf PKCS5PKEY
+     * @function
+     * @param {String} hPrvKey hexadecimal string of plain private key
+     * @param {String} passcode pass code to protect private key (ex. password)
+     * @param {String} sharedKeyAlgName algorithm name to protect private key (ex. AES-256-CBC)
+     * @param {String} ivsaltHex hexadecimal string of IV and salt
+     * @return {String} string of PEM formatted encrypted PKCS#5 private key
+         * @since pkcs5pkey 1.0.2
+     * @description
+     * <br/>
+     * generate PEM formatted encrypted PKCS#5 private key by hexadecimal string encoded
+     * ASN.1 object of plain RSA private key.
+     * Following arguments can be omitted.
+     * <ul>
+     * <li>alg - AES-256-CBC will be used if omitted.</li>
+     * <li>ivsaltHex - automatically generate IV and salt which length depends on algorithm</li>
+     * </ul>
+     * @example
+     * var pem = 
+         *   PKCS5PKEY.getEryptedPKCS5PEMFromPrvKeyHex(plainKeyHex, "password");
+     * var pem2 = 
+         *   PKCS5PKEY.getEryptedPKCS5PEMFromPrvKeyHex(plainKeyHex, "password", "AES-128-CBC");
+     * var pem3 = 
+         *   PKCS5PKEY.getEryptedPKCS5PEMFromPrvKeyHex(plainKeyHex, "password", "AES-128-CBC", "1f3d02...");
+     */
+    getEryptedPKCS5PEMFromPrvKeyHex: function(hPrvKey, passcode, sharedKeyAlgName, ivsaltHex) {
+        var sPEM = "";
+
+        // 1. set sharedKeyAlgName if undefined (default AES-256-CBC)
+        if (typeof sharedKeyAlgName == "undefined" || sharedKeyAlgName == null) {
+        sharedKeyAlgName = "AES-256-CBC";
+        }
+        if (typeof ALGLIST[sharedKeyAlgName] == "undefined")
+        throw "PKCS5PKEY unsupported algorithm: " + sharedKeyAlgName;
+
+        // 2. set ivsaltHex if undefined
+        if (typeof ivsaltHex == "undefined" || ivsaltHex == null) {
+        var ivlen = ALGLIST[sharedKeyAlgName]['ivlen'];
+        var randIV = _generateIvSaltHex(ivlen);
+        ivsaltHex = randIV.toUpperCase();
+        }
+
+        // 3. get shared key
+            //alert("ivsalthex=" + ivsaltHex);
+        var sharedKeyInfo = _getKeyAndUnusedIvByPasscodeAndIvsalt(sharedKeyAlgName, passcode, ivsaltHex);
+        var sharedKeyHex = sharedKeyInfo.keyhex;
+        // alert("sharedKeyHex = " + sharedKeyHex);
+
+            // 3. get encrypted Key in Base64
+            var encryptedKeyB64 = _encryptKeyHex(hPrvKey, sharedKeyAlgName, sharedKeyHex, ivsaltHex);
+
+        var pemBody = encryptedKeyB64.replace(/(.{64})/g, "$1\r\n");
+        var sPEM = "-----BEGIN RSA PRIVATE KEY-----\r\n";
+        sPEM += "Proc-Type: 4,ENCRYPTED\r\n";
+        sPEM += "DEK-Info: " + sharedKeyAlgName + "," + ivsaltHex + "\r\n";
+        sPEM += "\r\n";
+        sPEM += pemBody;
+        sPEM += "\r\n-----END RSA PRIVATE KEY-----\r\n";
+
+        return sPEM;
+        },
+
+    /**
+         * get PEM formatted encrypted PKCS#5 private key from RSAKey object of private key
+     * @name getEryptedPKCS5PEMFromRSAKey
+     * @memberOf PKCS5PKEY
+     * @function
+     * @param {RSAKey} pKey RSAKey object of private key
+     * @param {String} passcode pass code to protect private key (ex. password)
+     * @param {String} alg algorithm name to protect private key (default AES-256-CBC)
+     * @param {String} ivsaltHex hexadecimal string of IV and salt (default generated random IV)
+     * @return {String} string of PEM formatted encrypted PKCS#5 private key
+         * @since pkcs5pkey 1.0.2
+     * @description
+     * <br/>
+     * generate PEM formatted encrypted PKCS#5 private key by
+     * {@link RSAKey} object of RSA private key and passcode.
+     * Following argument can be omitted.
+     * <ul>
+     * <li>alg - AES-256-CBC will be used if omitted.</li>
+     * <li>ivsaltHex - automatically generate IV and salt which length depends on algorithm</li>
+     * </ul>
+     * @example
+     * var pkey = new RSAKey();
+     * pkey.generate(1024, '10001'); // generate 1024bit RSA private key with public exponent 'x010001'
+     * var pem = PKCS5PKEY.getEryptedPKCS5PEMFromRSAKey(pkey, "password");
+     */
+        getEryptedPKCS5PEMFromRSAKey: function(pKey, passcode, alg, ivsaltHex) {
+        var version = new KJUR.asn1.DERInteger({'int': 0});
+        var n = new KJUR.asn1.DERInteger({'bigint': pKey.n});
+        var e = new KJUR.asn1.DERInteger({'int': pKey.e});
+        var d = new KJUR.asn1.DERInteger({'bigint': pKey.d});
+        var p = new KJUR.asn1.DERInteger({'bigint': pKey.p});
+        var q = new KJUR.asn1.DERInteger({'bigint': pKey.q});
+        var dmp1 = new KJUR.asn1.DERInteger({'bigint': pKey.dmp1});
+        var dmq1 = new KJUR.asn1.DERInteger({'bigint': pKey.dmq1});
+        var coeff = new KJUR.asn1.DERInteger({'bigint': pKey.coeff});
+        var seq = new KJUR.asn1.DERSequence({'array': [version, n, e, d, p, q, dmp1, dmq1, coeff]});
+        var hex = seq.getEncodedHex();
+        return this.getEryptedPKCS5PEMFromPrvKeyHex(hex, passcode, alg, ivsaltHex);
+        },
+
+    /**
+         * generate RSAKey and PEM formatted encrypted PKCS#5 private key
+     * @name newEncryptedPKCS5PEM
+     * @memberOf PKCS5PKEY
+     * @function
+     * @param {String} passcode pass code to protect private key (ex. password)
+     * @param {Integer} keyLen key bit length of RSA key to be generated. (default 1024)
+     * @param {String} hPublicExponent hexadecimal string of public exponent (default 10001)
+     * @param {String} alg shared key algorithm to encrypt private key (default AES-258-CBC)
+     * @return {String} string of PEM formatted encrypted PKCS#5 private key
+         * @since pkcs5pkey 1.0.2
+     * @example
+     * var pem1 = PKCS5PKEY.newEncryptedPKCS5PEM("password");           // RSA1024bit/10001/AES-256-CBC
+     * var pem2 = PKCS5PKEY.newEncryptedPKCS5PEM("password", 512);      // RSA 512bit/10001/AES-256-CBC
+     * var pem3 = PKCS5PKEY.newEncryptedPKCS5PEM("password", 512, '3'); // RSA 512bit/    3/AES-256-CBC
+     */
+    newEncryptedPKCS5PEM: function(passcode, keyLen, hPublicExponent, alg) {
+        if (typeof keyLen == "undefined" || keyLen == null) {
+        keyLen = 1024;
+        }
+        if (typeof hPublicExponent == "undefined" || hPublicExponent == null) {
+        hPublicExponent = '10001';
+        }
+        var pKey = new RSAKey();
+        pKey.generate(keyLen, hPublicExponent);
+        var pem = null;
+        if (typeof alg == "undefined" || alg == null) {
+        pem = this.getEncryptedPKCS5PEMFromRSAKey(pkey, passcode);
+        } else {
+        pem = this.getEncryptedPKCS5PEMFromRSAKey(pkey, passcode, alg);
+        }
+        return pem;
+        },
+
+    // === PKCS8 ===============================================================
+
+    /**
+         * read PEM formatted unencrypted PKCS#8 private key and returns RSAKey object
+     * @name getRSAKeyFromPlainPKCS8PEM
+     * @memberOf PKCS5PKEY
+     * @function
+     * @param {String} pkcs8PEM PEM formatted unencrypted PKCS#8 private key
+     * @return {RSAKey} loaded RSAKey object of RSA private key
+         * @since pkcs5pkey 1.0.1
+     */
+        getRSAKeyFromPlainPKCS8PEM: function(pkcs8PEM) {
+            if (pkcs8PEM.match(/ENCRYPTED/))
+                throw "pem shall be not ENCRYPTED";
+            var prvKeyHex = this.getHexFromPEM(pkcs8PEM, "PRIVATE KEY");
+            var rsaKey = this.getRSAKeyFromPlainPKCS8Hex(prvKeyHex);
+        return rsaKey;
+        },
+
+    /**
+         * provide hexadecimal string of unencrypted PKCS#8 private key and returns RSAKey object
+     * @name getRSAKeyFromPlainPKCS8Hex
+     * @memberOf PKCS5PKEY
+     * @function
+     * @param {String} prvKeyHex hexadecimal string of unencrypted PKCS#8 private key
+     * @return {RSAKey} loaded RSAKey object of RSA private key
+         * @since pkcs5pkey 1.0.3
+     */
+        getRSAKeyFromPlainPKCS8Hex: function(prvKeyHex) {
+        var a1 = ASN1HEX.getPosArrayOfChildren_AtObj(prvKeyHex, 0);
+        if (a1.length != 3)
+        throw "outer DERSequence shall have 3 elements: " + a1.length;
+            var algIdTLV =ASN1HEX.getHexOfTLV_AtObj(prvKeyHex, a1[1]);
+        if (algIdTLV != "300d06092a864886f70d0101010500") // AlgId rsaEncryption
+        throw "PKCS8 AlgorithmIdentifier is not rsaEnc: " + algIdTLV;
+            var algIdTLV = ASN1HEX.getHexOfTLV_AtObj(prvKeyHex, a1[1]);
+        var octetStr = ASN1HEX.getHexOfTLV_AtObj(prvKeyHex, a1[2]);
+        var p5KeyHex = ASN1HEX.getHexOfV_AtObj(octetStr, 0);
+            //alert(p5KeyHex);
+        var rsaKey = new RSAKey();
+        rsaKey.readPrivateKeyFromASN1HexString(p5KeyHex);
+        return rsaKey;
+        },
+
+    /**
+         * generate PBKDF2 key hexstring with specified passcode and information
+     * @name parseHexOfEncryptedPKCS8
+     * @memberOf PKCS5PKEY
+     * @function
+     * @param {String} passcode passcode to decrypto private key
+     * @return {Array} info associative array of PKCS#8 parameters
+         * @since pkcs5pkey 1.0.3
+     * @description
+     * The associative array which is returned by this method has following properties:
+     * <ul>
+     * <li>info.pbkdf2Salt - hexadecimal string of PBKDF2 salt</li>
+     * <li>info.pkbdf2Iter - iteration count</li>
+     * <li>info.ciphertext - hexadecimal string of encrypted private key</li>
+     * <li>info.encryptionSchemeAlg - encryption algorithm name (currently TripleDES only)</li>
+     * <li>info.encryptionSchemeIV - initial vector for encryption algorithm</li>
+     * </ul>
+     * Currently, this method only supports PKCS#5v2.0 with PBES2/PBDKF2 of HmacSHA1 and TripleDES.
+     * <ul>
+     * <li>keyDerivationFunc = pkcs5PBKDF2 with HmacSHA1</li>
+     * <li>encryptionScheme = des-EDE3-CBC(i.e. TripleDES</li>
+     * </ul>
+     * @example
+     * // to convert plain PKCS#5 private key to encrypted PKCS#8 private
+     * // key with PBKDF2 with TripleDES
+     * % openssl pkcs8 -in plain_p5.pem -topk8 -v2 -des3 -out encrypted_p8.pem
+     */
+        parseHexOfEncryptedPKCS8: function(sHEX) {
+            var info = {};
+        
+        var a0 = ASN1HEX.getPosArrayOfChildren_AtObj(sHEX, 0);
+        if (a0.length != 2)
+        throw "malformed format: SEQUENCE(0).items != 2: " + a0.length;
+
+        // 1. ciphertext
+        info.ciphertext = ASN1HEX.getHexOfV_AtObj(sHEX, a0[1]);
+
+        // 2. pkcs5PBES2
+        var a0_0 = ASN1HEX.getPosArrayOfChildren_AtObj(sHEX, a0[0]); 
+        if (a0_0.length != 2)
+        throw "malformed format: SEQUENCE(0.0).items != 2: " + a0_0.length;
+
+        // 2.1 check if pkcs5PBES2(1 2 840 113549 1 5 13)
+        if (ASN1HEX.getHexOfV_AtObj(sHEX, a0_0[0]) != "2a864886f70d01050d")
+        throw "this only supports pkcs5PBES2";
+
+        // 2.2 pkcs5PBES2 param
+            var a0_0_1 = ASN1HEX.getPosArrayOfChildren_AtObj(sHEX, a0_0[1]); 
+        if (a0_0.length != 2)
+        throw "malformed format: SEQUENCE(0.0.1).items != 2: " + a0_0_1.length;
+
+        // 2.2.1 encryptionScheme
+        var a0_0_1_1 = ASN1HEX.getPosArrayOfChildren_AtObj(sHEX, a0_0_1[1]); 
+        if (a0_0_1_1.length != 2)
+        throw "malformed format: SEQUENCE(0.0.1.1).items != 2: " + a0_0_1_1.length;
+        if (ASN1HEX.getHexOfV_AtObj(sHEX, a0_0_1_1[0]) != "2a864886f70d0307")
+        throw "this only supports TripleDES";
+        info.encryptionSchemeAlg = "TripleDES";
+
+        // 2.2.1.1 IV of encryptionScheme
+        info.encryptionSchemeIV = ASN1HEX.getHexOfV_AtObj(sHEX, a0_0_1_1[1]);
+
+        // 2.2.2 keyDerivationFunc
+        var a0_0_1_0 = ASN1HEX.getPosArrayOfChildren_AtObj(sHEX, a0_0_1[0]); 
+        if (a0_0_1_0.length != 2)
+        throw "malformed format: SEQUENCE(0.0.1.0).items != 2: " + a0_0_1_0.length;
+        if (ASN1HEX.getHexOfV_AtObj(sHEX, a0_0_1_0[0]) != "2a864886f70d01050c")
+        throw "this only supports pkcs5PBKDF2";
+
+        // 2.2.2.1 pkcs5PBKDF2 param
+        var a0_0_1_0_1 = ASN1HEX.getPosArrayOfChildren_AtObj(sHEX, a0_0_1_0[1]); 
+        if (a0_0_1_0_1.length < 2)
+        throw "malformed format: SEQUENCE(0.0.1.0.1).items < 2: " + a0_0_1_0_1.length;
+
+        // 2.2.2.1.1 PBKDF2 salt
+        info.pbkdf2Salt = ASN1HEX.getHexOfV_AtObj(sHEX, a0_0_1_0_1[0]);
+
+        // 2.2.2.1.2 PBKDF2 iter
+        var iterNumHex = ASN1HEX.getHexOfV_AtObj(sHEX, a0_0_1_0_1[1]);
+        try {
+        info.pbkdf2Iter = parseInt(iterNumHex, 16);
+        } catch(ex) {
+        throw "malformed format pbkdf2Iter: " + iterNumHex;
+        }
+
+        return info;
+    },
+
+    /**
+         * generate PBKDF2 key hexstring with specified passcode and information
+     * @name getPBKDF2KeyHexFromParam
+     * @memberOf PKCS5PKEY
+     * @function
+     * @param {Array} info result of {@link parseHexOfEncryptedPKCS8} which has preference of PKCS#8 file
+     * @param {String} passcode passcode to decrypto private key
+     * @return {String} hexadecimal string of PBKDF2 key
+         * @since pkcs5pkey 1.0.3
+     * @description
+     * As for info, this uses following properties:
+     * <ul>
+     * <li>info.pbkdf2Salt - hexadecimal string of PBKDF2 salt</li>
+     * <li>info.pkbdf2Iter - iteration count</li>
+     * </ul>
+     * Currently, this method only supports PKCS#5v2.0 with PBES2/PBDKF2 of HmacSHA1 and TripleDES.
+     * <ul>
+     * <li>keyDerivationFunc = pkcs5PBKDF2 with HmacSHA1</li>
+     * <li>encryptionScheme = des-EDE3-CBC(i.e. TripleDES</li>
+     * </ul>
+     * @example
+     * // to convert plain PKCS#5 private key to encrypted PKCS#8 private
+     * // key with PBKDF2 with TripleDES
+     * % openssl pkcs8 -in plain_p5.pem -topk8 -v2 -des3 -out encrypted_p8.pem
+     */
+    getPBKDF2KeyHexFromParam: function(info, passcode) {
+        var pbkdf2SaltWS = CryptoJS.enc.Hex.parse(info.pbkdf2Salt);
+        var pbkdf2Iter = info.pbkdf2Iter;
+        var pbkdf2KeyWS = CryptoJS.PBKDF2(passcode, 
+                          pbkdf2SaltWS, 
+                          { keySize: 192/32, iterations: pbkdf2Iter });
+        var pbkdf2KeyHex = CryptoJS.enc.Hex.stringify(pbkdf2KeyWS);
+        return pbkdf2KeyHex;
+    },
+
+    /**
+         * read PEM formatted encrypted PKCS#8 private key and returns hexadecimal string of plain PKCS#8 private key
+     * @name getPlainPKCS8HexFromEncryptedPKCS8PEM
+     * @memberOf PKCS5PKEY
+     * @function
+     * @param {String} pkcs8PEM PEM formatted encrypted PKCS#8 private key
+     * @param {String} passcode passcode to decrypto private key
+     * @return {String} hexadecimal string of plain PKCS#8 private key
+         * @since pkcs5pkey 1.0.3
+     * @description
+     * Currently, this method only supports PKCS#5v2.0 with PBES2/PBDKF2 of HmacSHA1 and TripleDES.
+     * <ul>
+     * <li>keyDerivationFunc = pkcs5PBKDF2 with HmacSHA1</li>
+     * <li>encryptionScheme = des-EDE3-CBC(i.e. TripleDES</li>
+     * </ul>
+     * @example
+     * // to convert plain PKCS#5 private key to encrypted PKCS#8 private
+     * // key with PBKDF2 with TripleDES
+     * % openssl pkcs8 -in plain_p5.pem -topk8 -v2 -des3 -out encrypted_p8.pem
+     */
+    getPlainPKCS8HexFromEncryptedPKCS8PEM: function(pkcs8PEM, passcode) {
+        // 1. derHex - PKCS#8 private key encrypted by PBKDF2
+            var derHex = this.getHexFromPEM(pkcs8PEM, "ENCRYPTED PRIVATE KEY");
+        // 2. info - PKCS#5 PBES info
+        var info = this.parseHexOfEncryptedPKCS8(derHex);
+        // 3. hKey - PBKDF2 key
+        var pbkdf2KeyHex = PKCS5PKEY.getPBKDF2KeyHexFromParam(info, passcode);
+        // 4. decrypt ciphertext by PBKDF2 key
+        var encrypted = {};
+        encrypted.ciphertext = CryptoJS.enc.Hex.parse(info.ciphertext);
+        var pbkdf2KeyWS = CryptoJS.enc.Hex.parse(pbkdf2KeyHex);
+        var des3IVWS = CryptoJS.enc.Hex.parse(info.encryptionSchemeIV);
+        var decWS = CryptoJS.TripleDES.decrypt(encrypted, pbkdf2KeyWS, { iv: des3IVWS });
+        var decHex = CryptoJS.enc.Hex.stringify(decWS);
+        return decHex;
+    },
+
+    /**
+         * read PEM formatted encrypted PKCS#8 private key and returns RSAKey object
+     * @name getRSAKeyFromEncryptedPKCS8PEM
+     * @memberOf PKCS5PKEY
+     * @function
+     * @param {String} pkcs8PEM PEM formatted encrypted PKCS#8 private key
+     * @param {String} passcode passcode to decrypto private key
+     * @return {RSAKey} loaded RSAKey object of RSA private key
+         * @since pkcs5pkey 1.0.3
+     * @description
+     * Currently, this method only supports PKCS#5v2.0 with PBES2/PBDKF2 of HmacSHA1 and TripleDES.
+     * <ul>
+     * <li>keyDerivationFunc = pkcs5PBKDF2 with HmacSHA1</li>
+     * <li>encryptionScheme = des-EDE3-CBC(i.e. TripleDES</li>
+     * </ul>
+     * @example
+     * // to convert plain PKCS#5 private key to encrypted PKCS#8 private
+     * // key with PBKDF2 with TripleDES
+     * % openssl pkcs8 -in plain_p5.pem -topk8 -v2 -des3 -out encrypted_p8.pem
+     */
+        getRSAKeyFromEncryptedPKCS8PEM: function(pkcs8PEM, passcode) {
+        var prvKeyHex = this.getPlainPKCS8HexFromEncryptedPKCS8PEM(pkcs8PEM, passcode);
+        var rsaKey = this.getRSAKeyFromPlainPKCS8Hex(prvKeyHex);
+        return rsaKey;
+        },
+
+    /**
+         * get RSAKey/ECDSA private key object from encrypted PEM PKCS#8 private key
+     * @name getKeyFromEncryptedPKCS8PEM
+     * @memberOf PKCS5PKEY
+     * @function
+     * @param {String} pkcs8PEM string of PEM formatted PKCS#8 private key
+     * @param {String} passcode passcode string to decrypt key
+     * @return {Object} RSAKey or KJUR.crypto.ECDSA private key object
+     * @since pkcs5pkey 1.0.5
+     */
+        getKeyFromEncryptedPKCS8PEM: function(pkcs8PEM, passcode) {
+        var prvKeyHex = this.getPlainPKCS8HexFromEncryptedPKCS8PEM(pkcs8PEM, passcode);
+        var key = this.getKeyFromPlainPrivatePKCS8Hex(prvKeyHex);
+        return key;
+        },
+
+    /**
+         * parse hexadecimal string of plain PKCS#8 private key
+     * @name parsePlainPrivatePKCS8Hex
+     * @memberOf PKCS5PKEY
+     * @function
+     * @param {String} pkcs8PrvHex hexadecimal string of PKCS#8 plain private key
+     * @return {Array} associative array of parsed key
+     * @since pkcs5pkey 1.0.5
+     * @description
+     * Resulted associative array has following properties:
+     * <ul>
+     * <li>algoid - hexadecimal string of OID of asymmetric key algorithm</li>
+     * <li>algparam - hexadecimal string of OID of ECC curve name or null</li>
+     * <li>keyidx - string starting index of key in pkcs8PrvHex</li>
+     * </ul>
+     */
+    parsePlainPrivatePKCS8Hex: function(pkcs8PrvHex) {
+        var result = {};
+        result.algparam = null;
+
+        // 1. sequence
+        if (pkcs8PrvHex.substr(0, 2) != "30")
+        throw "malformed plain PKCS8 private key(code:001)"; // not sequence
+
+        var a1 = ASN1HEX.getPosArrayOfChildren_AtObj(pkcs8PrvHex, 0);
+        if (a1.length != 3)
+        throw "malformed plain PKCS8 private key(code:002)";
+
+        // 2. AlgID
+            if (pkcs8PrvHex.substr(a1[1], 2) != "30")
+                throw "malformed PKCS8 private key(code:003)"; // AlgId not sequence
+
+            var a2 = ASN1HEX.getPosArrayOfChildren_AtObj(pkcs8PrvHex, a1[1]);
+            if (a2.length != 2)
+                throw "malformed PKCS8 private key(code:004)"; // AlgId not have two elements
+
+        // 2.1. AlgID OID
+        if (pkcs8PrvHex.substr(a2[0], 2) != "06")
+        throw "malformed PKCS8 private key(code:005)"; // AlgId.oid is not OID
+
+        result.algoid = ASN1HEX.getHexOfV_AtObj(pkcs8PrvHex, a2[0]);
+
+        // 2.2. AlgID param
+        if (pkcs8PrvHex.substr(a2[1], 2) == "06") {
+        result.algparam = ASN1HEX.getHexOfV_AtObj(pkcs8PrvHex, a2[1]);
+        }
+
+        // 3. Key index
+        if (pkcs8PrvHex.substr(a1[2], 2) != "04")
+        throw "malformed PKCS8 private key(code:006)"; // not octet string
+
+        result.keyidx = ASN1HEX.getStartPosOfV_AtObj(pkcs8PrvHex, a1[2]);
+
+        return result;
+        },
+
+    /**
+         * get RSAKey/ECDSA private key object from PEM plain PEM PKCS#8 private key
+     * @name getKeyFromPlainPrivatePKCS8PEM
+     * @memberOf PKCS5PKEY
+     * @function
+     * @param {String} pkcs8PEM string of plain PEM formatted PKCS#8 private key
+     * @return {Object} RSAKey or KJUR.crypto.ECDSA private key object
+     * @since pkcs5pkey 1.0.5
+     */
+    getKeyFromPlainPrivatePKCS8PEM: function(prvKeyPEM) {
+        var prvKeyHex = this.getHexFromPEM(prvKeyPEM, "PRIVATE KEY");
+        var key = this.getKeyFromPlainPrivatePKCS8Hex(prvKeyHex);
+        return key;
+    },
+
+    /**
+         * get RSAKey/ECDSA private key object from HEX plain PEM PKCS#8 private key
+     * @name getKeyFromPlainPrivatePKCS8Hex
+     * @memberOf PKCS5PKEY
+     * @function
+     * @param {String} prvKeyHex hexadecimal string of plain PKCS#8 private key
+     * @return {Object} RSAKey or KJUR.crypto.ECDSA private key object
+     * @since pkcs5pkey 1.0.5
+     */
+    getKeyFromPlainPrivatePKCS8Hex: function(prvKeyHex) {
+        var p8 = this.parsePlainPrivatePKCS8Hex(prvKeyHex);
+        
+        if (p8.algoid == "2a864886f70d010101") { // RSA
+        this.parsePrivateRawRSAKeyHexAtObj(prvKeyHex, p8);
+        var k = p8.key;
+        var key = new RSAKey();
+        key.setPrivateEx(k.n, k.e, k.d, k.p, k.q, k.dp, k.dq, k.co);
+        return key;
+        } else if (p8.algoid == "2a8648ce3d0201") { // ECC
+        this.parsePrivateRawECKeyHexAtObj(prvKeyHex, p8);
+        if (KJUR.crypto.OID.oidhex2name[p8.algparam] === undefined)
+            throw "KJUR.crypto.OID.oidhex2name undefined: " + p8.algparam;
+        var curveName = KJUR.crypto.OID.oidhex2name[p8.algparam];
+        var key = new KJUR.crypto.ECDSA({'curve': curveName, 'prv': p8.key});
+        return key;
+        } else {
+        throw "unsupported private key algorithm";
+        }
+    },
+
+    // === PKCS8 RSA Public Key ================================================
+    /**
+         * read PEM formatted PKCS#8 public key and returns RSAKey object
+     * @name getRSAKeyFromPublicPKCS8PEM
+     * @memberOf PKCS5PKEY
+     * @function
+     * @param {String} pkcs8PubPEM PEM formatted PKCS#8 public key
+     * @return {RSAKey} loaded RSAKey object of RSA public key
+         * @since pkcs5pkey 1.0.4
+     */
+        getRSAKeyFromPublicPKCS8PEM: function(pkcs8PubPEM) {
+            var pubKeyHex = this.getHexFromPEM(pkcs8PubPEM, "PUBLIC KEY");
+            var rsaKey = this.getRSAKeyFromPublicPKCS8Hex(pubKeyHex);
+        return rsaKey;
+    },
+
+    /**
+         * get RSAKey/ECDSA public key object from PEM PKCS#8 public key
+     * @name getKeyFromPublicPKCS8PEM
+     * @memberOf PKCS5PKEY
+     * @function
+     * @param {String} pkcsPub8PEM string of PEM formatted PKCS#8 public key
+     * @return {Object} RSAKey or KJUR.crypto.ECDSA private key object
+     * @since pkcs5pkey 1.0.5
+     */
+        getKeyFromPublicPKCS8PEM: function(pkcs8PubPEM) {
+            var pubKeyHex = this.getHexFromPEM(pkcs8PubPEM, "PUBLIC KEY");
+            var key = this.getKeyFromPublicPKCS8Hex(pubKeyHex);
+        return key;
+    },
+
+    /**
+         * get RSAKey/ECDSA public key object from hexadecimal string of PKCS#8 public key
+     * @name getKeyFromPublicPKCS8Hex
+     * @memberOf PKCS5PKEY
+     * @function
+     * @param {String} pkcsPub8Hex hexadecimal string of PKCS#8 public key
+     * @return {Object} RSAKey or KJUR.crypto.ECDSA private key object
+     * @since pkcs5pkey 1.0.5
+     */
+        getKeyFromPublicPKCS8Hex: function(pkcs8PubHex) {
+        var p8 = this.parsePublicPKCS8Hex(pkcs8PubHex);
+        
+        if (p8.algoid == "2a864886f70d010101") { // RSA
+        var aRSA = this.parsePublicRawRSAKeyHex(p8.key);
+        var key = new RSAKey();
+        key.setPublic(aRSA.n, aRSA.e);
+        return key;
+        } else if (p8.algoid == "2a8648ce3d0201") { // ECC
+        if (KJUR.crypto.OID.oidhex2name[p8.algparam] === undefined)
+            throw "KJUR.crypto.OID.oidhex2name undefined: " + p8.algparam;
+        var curveName = KJUR.crypto.OID.oidhex2name[p8.algparam];
+        var key = new KJUR.crypto.ECDSA({'curve': curveName, 'pub': p8.key});
+        return key;
+        } else {
+        throw "unsupported public key algorithm";
+        }
+    },
+
+    /**
+         * parse hexadecimal string of plain PKCS#8 private key
+     * @name parsePublicRawRSAKeyHex
+     * @memberOf PKCS5PKEY
+     * @function
+     * @param {String} pubRawRSAHex hexadecimal string of ASN.1 encoded PKCS#8 public key
+     * @return {Array} associative array of parsed key
+     * @since pkcs5pkey 1.0.5
+     * @description
+     * Resulted associative array has following properties:
+     * <ul>
+     * <li>n - hexadecimal string of public key
+     * <li>e - hexadecimal string of public exponent
+     * </ul>
+     */
+    parsePublicRawRSAKeyHex: function(pubRawRSAHex) {
+        var result = {};
+        
+        // 1. Sequence
+        if (pubRawRSAHex.substr(0, 2) != "30")
+        throw "malformed RSA key(code:001)"; // not sequence
+        
+        var a1 = ASN1HEX.getPosArrayOfChildren_AtObj(pubRawRSAHex, 0);
+        if (a1.length != 2)
+        throw "malformed RSA key(code:002)"; // not 2 items in seq
+
+        // 2. public key "N"
+        if (pubRawRSAHex.substr(a1[0], 2) != "02")
+        throw "malformed RSA key(code:003)"; // 1st item is not integer
+
+        result.n = ASN1HEX.getHexOfV_AtObj(pubRawRSAHex, a1[0]);
+
+        // 3. public key "E"
+        if (pubRawRSAHex.substr(a1[1], 2) != "02")
+        throw "malformed RSA key(code:004)"; // 2nd item is not integer
+
+        result.e = ASN1HEX.getHexOfV_AtObj(pubRawRSAHex, a1[1]);
+
+        return result;
+    },
+
+    /**
+         * parse hexadecimal string of RSA private key
+     * @name parsePrivateRawRSAKeyHexAtObj
+     * @memberOf PKCS5PKEY
+     * @function
+     * @param {String} pkcs8PrvHex hexadecimal string of PKCS#8 private key concluding RSA private key
+     * @return {Array} info associative array to add parsed RSA private key information
+     * @since pkcs5pkey 1.0.5
+     * @description
+     * Following properties are added to associative array 'info'
+     * <ul>
+     * <li>n - hexadecimal string of public key
+     * <li>e - hexadecimal string of public exponent
+     * <li>d - hexadecimal string of private key
+     * <li>p - hexadecimal string
+     * <li>q - hexadecimal string
+     * <li>dp - hexadecimal string
+     * <li>dq - hexadecimal string
+     * <li>co - hexadecimal string
+     * </ul>
+     */
+    parsePrivateRawRSAKeyHexAtObj: function(pkcs8PrvHex, info) {
+        var keyIdx = info.keyidx;
+        
+        // 1. sequence
+        if (pkcs8PrvHex.substr(keyIdx, 2) != "30")
+        throw "malformed RSA private key(code:001)"; // not sequence
+
+        var a1 = ASN1HEX.getPosArrayOfChildren_AtObj(pkcs8PrvHex, keyIdx);
+        if (a1.length != 9)
+        throw "malformed RSA private key(code:002)"; // not sequence
+
+        // 2. RSA key
+        info.key = {};
+        info.key.n = ASN1HEX.getHexOfV_AtObj(pkcs8PrvHex, a1[1]);
+        info.key.e = ASN1HEX.getHexOfV_AtObj(pkcs8PrvHex, a1[2]);
+        info.key.d = ASN1HEX.getHexOfV_AtObj(pkcs8PrvHex, a1[3]);
+        info.key.p = ASN1HEX.getHexOfV_AtObj(pkcs8PrvHex, a1[4]);
+        info.key.q = ASN1HEX.getHexOfV_AtObj(pkcs8PrvHex, a1[5]);
+        info.key.dp = ASN1HEX.getHexOfV_AtObj(pkcs8PrvHex, a1[6]);
+        info.key.dq = ASN1HEX.getHexOfV_AtObj(pkcs8PrvHex, a1[7]);
+        info.key.co = ASN1HEX.getHexOfV_AtObj(pkcs8PrvHex, a1[8]);
+    },
+
+    /**
+         * parse hexadecimal string of ECC private key
+     * @name parsePrivateRawECKeyHexAtObj
+     * @memberOf PKCS5PKEY
+     * @function
+     * @param {String} pkcs8PrvHex hexadecimal string of PKCS#8 private key concluding EC private key
+     * @return {Array} info associative array to add parsed ECC private key information
+     * @since pkcs5pkey 1.0.5
+     * @description
+     * Following properties are added to associative array 'info'
+     * <ul>
+     * <li>key - hexadecimal string of ECC private key
+     * </ul>
+     */
+    parsePrivateRawECKeyHexAtObj: function(pkcs8PrvHex, info) {
+        var keyIdx = info.keyidx;
+        
+        // 1. sequence
+        if (pkcs8PrvHex.substr(keyIdx, 2) != "30")
+        throw "malformed ECC private key(code:001)"; // not sequence
+
+        var a1 = ASN1HEX.getPosArrayOfChildren_AtObj(pkcs8PrvHex, keyIdx);
+        if (a1.length != 3)
+        throw "malformed ECC private key(code:002)"; // not sequence
+
+        // 2. EC private key
+        if (pkcs8PrvHex.substr(a1[1], 2) != "04")
+        throw "malformed ECC private key(code:003)"; // not octetstring
+
+        info.key = ASN1HEX.getHexOfV_AtObj(pkcs8PrvHex, a1[1]);
+    },
+
+    /**
+         * parse hexadecimal string of PKCS#8 public key
+     * @name parsePublicPKCS8Hex
+     * @memberOf PKCS5PKEY
+     * @function
+     * @param {String} pkcs8PubHex hexadecimal string of PKCS#8 public key
+     * @return {Hash} hash of key information
+     * @description
+         * Resulted hash has following attributes.
+     * <ul>
+     * <li>algoid - hexadecimal string of OID of asymmetric key algorithm</li>
+     * <li>algparam - hexadecimal string of OID of ECC curve name or null</li>
+     * <li>key - hexadecimal string of public key</li>
+     * </ul>
+     */
+        parsePublicPKCS8Hex: function(pkcs8PubHex) {
+        var result = {};
+        result.algparam = null;
+
+            // 1. AlgID and Key bit string
+        var a1 = ASN1HEX.getPosArrayOfChildren_AtObj(pkcs8PubHex, 0);
+        if (a1.length != 2)
+        throw "outer DERSequence shall have 2 elements: " + a1.length;
+
+            // 2. AlgID
+            var idxAlgIdTLV = a1[0];
+            if (pkcs8PubHex.substr(idxAlgIdTLV, 2) != "30")
+                throw "malformed PKCS8 public key(code:001)"; // AlgId not sequence
+
+            var a2 = ASN1HEX.getPosArrayOfChildren_AtObj(pkcs8PubHex, idxAlgIdTLV);
+            if (a2.length != 2)
+                throw "malformed PKCS8 public key(code:002)"; // AlgId not have two elements
+
+        // 2.1. AlgID OID
+        if (pkcs8PubHex.substr(a2[0], 2) != "06")
+        throw "malformed PKCS8 public key(code:003)"; // AlgId.oid is not OID
+
+        result.algoid = ASN1HEX.getHexOfV_AtObj(pkcs8PubHex, a2[0]);
+
+        // 2.2. AlgID param
+        if (pkcs8PubHex.substr(a2[1], 2) == "06") {
+        result.algparam = ASN1HEX.getHexOfV_AtObj(pkcs8PubHex, a2[1]);
+        }
+
+        // 3. Key
+        if (pkcs8PubHex.substr(a1[1], 2) != "03")
+        throw "malformed PKCS8 public key(code:004)"; // Key is not bit string
+
+        result.key = ASN1HEX.getHexOfV_AtObj(pkcs8PubHex, a1[1]).substr(2);
+            
+        // 4. return result assoc array
+        return result;
+        },
+
+    /**
+         * provide hexadecimal string of unencrypted PKCS#8 private key and returns RSAKey object
+     * @name getRSAKeyFromPublicPKCS8Hex
+     * @memberOf PKCS5PKEY
+     * @function
+     * @param {String} pkcs8PubHex hexadecimal string of unencrypted PKCS#8 public key
+     * @return {RSAKey} loaded RSAKey object of RSA public key
+         * @since pkcs5pkey 1.0.4
+     */
+        getRSAKeyFromPublicPKCS8Hex: function(pkcs8PubHex) {
+        var a1 = ASN1HEX.getPosArrayOfChildren_AtObj(pkcs8PubHex, 0);
+        if (a1.length != 2)
+        throw "outer DERSequence shall have 2 elements: " + a1.length;
+
+            var algIdTLV =ASN1HEX.getHexOfTLV_AtObj(pkcs8PubHex, a1[0]);
+        if (algIdTLV != "300d06092a864886f70d0101010500") // AlgId rsaEncryption
+        throw "PKCS8 AlgorithmId is not rsaEncryption";
+        
+        if (pkcs8PubHex.substr(a1[1], 2) != "03")
+        throw "PKCS8 Public Key is not BITSTRING encapslated.";
+
+        var idxPub = ASN1HEX.getStartPosOfV_AtObj(pkcs8PubHex, a1[1]) + 2; // 2 for unused bit
+        
+        if (pkcs8PubHex.substr(idxPub, 2) != "30")
+        throw "PKCS8 Public Key is not SEQUENCE.";
+
+        var a2 = ASN1HEX.getPosArrayOfChildren_AtObj(pkcs8PubHex, idxPub);
+        if (a2.length != 2)
+        throw "inner DERSequence shall have 2 elements: " + a2.length;
+
+        if (pkcs8PubHex.substr(a2[0], 2) != "02") 
+        throw "N is not ASN.1 INTEGER";
+        if (pkcs8PubHex.substr(a2[1], 2) != "02") 
+        throw "E is not ASN.1 INTEGER";
+        
+        var hN = ASN1HEX.getHexOfV_AtObj(pkcs8PubHex, a2[0]);
+        var hE = ASN1HEX.getHexOfV_AtObj(pkcs8PubHex, a2[1]);
+
+        var pubKey = new RSAKey();
+        pubKey.setPublic(hN, hE);
+        
+        return pubKey;
+    },
+
+    //addAlgorithm: function(functionObject, algName, keyLen, ivLen) {
+    //}
+    };
+}();
+/*
+CryptoJS v3.1.2 aes.js
+code.google.com/p/crypto-js
+(c) 2009-2013 by Jeff Mott. All rights reserved.
+code.google.com/p/crypto-js/wiki/License
+*/
+(function(){for(var q=CryptoJS,x=q.lib.BlockCipher,r=q.algo,j=[],y=[],z=[],A=[],B=[],C=[],s=[],u=[],v=[],w=[],g=[],k=0;256>k;k++)g[k]=128>k?k<<1:k<<1^283;for(var n=0,l=0,k=0;256>k;k++){var f=l^l<<1^l<<2^l<<3^l<<4,f=f>>>8^f&255^99;j[n]=f;y[f]=n;var t=g[n],D=g[t],E=g[D],b=257*g[f]^16843008*f;z[n]=b<<24|b>>>8;A[n]=b<<16|b>>>16;B[n]=b<<8|b>>>24;C[n]=b;b=16843009*E^65537*D^257*t^16843008*n;s[f]=b<<24|b>>>8;u[f]=b<<16|b>>>16;v[f]=b<<8|b>>>24;w[f]=b;n?(n=t^g[g[g[E^t]]],l^=g[g[l]]):n=l=1}var F=[0,1,2,4,8,
+16,32,64,128,27,54],r=r.AES=x.extend({_doReset:function(){for(var c=this._key,e=c.words,a=c.sigBytes/4,c=4*((this._nRounds=a+6)+1),b=this._keySchedule=[],h=0;h<c;h++)if(h<a)b[h]=e[h];else{var d=b[h-1];h%a?6<a&&4==h%a&&(d=j[d>>>24]<<24|j[d>>>16&255]<<16|j[d>>>8&255]<<8|j[d&255]):(d=d<<8|d>>>24,d=j[d>>>24]<<24|j[d>>>16&255]<<16|j[d>>>8&255]<<8|j[d&255],d^=F[h/a|0]<<24);b[h]=b[h-a]^d}e=this._invKeySchedule=[];for(a=0;a<c;a++)h=c-a,d=a%4?b[h]:b[h-4],e[a]=4>a||4>=h?d:s[j[d>>>24]]^u[j[d>>>16&255]]^v[j[d>>>
+8&255]]^w[j[d&255]]},encryptBlock:function(c,e){this._doCryptBlock(c,e,this._keySchedule,z,A,B,C,j)},decryptBlock:function(c,e){var a=c[e+1];c[e+1]=c[e+3];c[e+3]=a;this._doCryptBlock(c,e,this._invKeySchedule,s,u,v,w,y);a=c[e+1];c[e+1]=c[e+3];c[e+3]=a},_doCryptBlock:function(c,e,a,b,h,d,j,m){for(var n=this._nRounds,f=c[e]^a[0],g=c[e+1]^a[1],k=c[e+2]^a[2],p=c[e+3]^a[3],l=4,t=1;t<n;t++)var q=b[f>>>24]^h[g>>>16&255]^d[k>>>8&255]^j[p&255]^a[l++],r=b[g>>>24]^h[k>>>16&255]^d[p>>>8&255]^j[f&255]^a[l++],s=
+b[k>>>24]^h[p>>>16&255]^d[f>>>8&255]^j[g&255]^a[l++],p=b[p>>>24]^h[f>>>16&255]^d[g>>>8&255]^j[k&255]^a[l++],f=q,g=r,k=s;q=(m[f>>>24]<<24|m[g>>>16&255]<<16|m[k>>>8&255]<<8|m[p&255])^a[l++];r=(m[g>>>24]<<24|m[k>>>16&255]<<16|m[p>>>8&255]<<8|m[f&255])^a[l++];s=(m[k>>>24]<<24|m[p>>>16&255]<<16|m[f>>>8&255]<<8|m[g&255])^a[l++];p=(m[p>>>24]<<24|m[f>>>16&255]<<16|m[g>>>8&255]<<8|m[k&255])^a[l++];c[e]=q;c[e+1]=r;c[e+2]=s;c[e+3]=p},keySize:8});q.AES=x._createHelper(r)})();
+
+/*! asn1-1.0.4.js (c) 2013 Kenji Urushima | kjur.github.com/jsrsasign/license
+ */
+/*
+ * asn1.js - ASN.1 DER encoder classes
+ *
+ * Copyright (c) 2013 Kenji Urushima (kenji.urushima@gmail.com)
+ *
+ * This software is licensed under the terms of the MIT License.
+ * http://kjur.github.com/jsrsasign/license
+ *
+ * The above copyright and license notice shall be 
+ * included in all copies or substantial portions of the Software.
+ */
+
+/**
+ * @fileOverview
+ * @name asn1-1.0.js
+ * @author Kenji Urushima kenji.urushima@gmail.com
+ * @version asn1 1.0.4 (2013-Oct-02)
+ * @since jsrsasign 2.1
+ * @license <a href="http://kjur.github.io/jsrsasign/license/">MIT License</a>
+ */
+
+/** 
+ * kjur's class library name space
+ * <p>
+ * This name space provides following name spaces:
+ * <ul>
+ * <li>{@link KJUR.asn1} - ASN.1 primitive hexadecimal encoder</li>
+ * <li>{@link KJUR.asn1.x509} - ASN.1 structure for X.509 certificate and CRL</li>
+ * <li>{@link KJUR.crypto} - Java Cryptographic Extension(JCE) style MessageDigest/Signature 
+ * class and utilities</li>
+ * </ul>
+ * </p> 
+ * NOTE: Please ignore method summary and document of this namespace. This caused by a bug of jsdoc2.
+  * @name KJUR
+ * @namespace kjur's class library name space
+ */
+if (typeof KJUR == "undefined" || !KJUR) KJUR = {};
+
+/**
+ * kjur's ASN.1 class library name space
+ * <p>
+ * This is ITU-T X.690 ASN.1 DER encoder class library and
+ * class structure and methods is very similar to 
+ * org.bouncycastle.asn1 package of 
+ * well known BouncyCaslte Cryptography Library.
+ *
+ * <h4>PROVIDING ASN.1 PRIMITIVES</h4>
+ * Here are ASN.1 DER primitive classes.
+ * <ul>
+ * <li>0x01 {@link KJUR.asn1.DERBoolean}</li>
+ * <li>0x02 {@link KJUR.asn1.DERInteger}</li>
+ * <li>0x03 {@link KJUR.asn1.DERBitString}</li>
+ * <li>0x04 {@link KJUR.asn1.DEROctetString}</li>
+ * <li>0x05 {@link KJUR.asn1.DERNull}</li>
+ * <li>0x06 {@link KJUR.asn1.DERObjectIdentifier}</li>
+ * <li>0x0c {@link KJUR.asn1.DERUTF8String}</li>
+ * <li>0x12 {@link KJUR.asn1.DERNumericString}</li>
+ * <li>0x13 {@link KJUR.asn1.DERPrintableString}</li>
+ * <li>0x14 {@link KJUR.asn1.DERTeletexString}</li>
+ * <li>0x16 {@link KJUR.asn1.DERIA5String}</li>
+ * <li>0x17 {@link KJUR.asn1.DERUTCTime}</li>
+ * <li>0x18 {@link KJUR.asn1.DERGeneralizedTime}</li>
+ * <li>0x30 {@link KJUR.asn1.DERSequence}</li>
+ * <li>0x31 {@link KJUR.asn1.DERSet}</li>
+ * </ul>
+ *
+ * <h4>OTHER ASN.1 CLASSES</h4>
+ * <ul>
+ * <li>{@link KJUR.asn1.ASN1Object}</li>
+ * <li>{@link KJUR.asn1.DERAbstractString}</li>
+ * <li>{@link KJUR.asn1.DERAbstractTime}</li>
+ * <li>{@link KJUR.asn1.DERAbstractStructured}</li>
+ * <li>{@link KJUR.asn1.DERTaggedObject}</li>
+ * </ul>
+ * </p>
+ * NOTE: Please ignore method summary and document of this namespace. This caused by a bug of jsdoc2.
+ * @name KJUR.asn1
+ * @namespace
+ */
+if (typeof KJUR.asn1 == "undefined" || !KJUR.asn1) KJUR.asn1 = {};
+
+/**
+ * ASN1 utilities class
+ * @name KJUR.asn1.ASN1Util
+ * @class ASN1 utilities class
+ * @since asn1 1.0.2
+ */
+KJUR.asn1.ASN1Util = new function() {
+    this.integerToByteHex = function(i) {
+    var h = i.toString(16);
+    if ((h.length % 2) == 1) h = '0' + h;
+    return h;
+    };
+    this.bigIntToMinTwosComplementsHex = function(bigIntegerValue) {
+    var h = bigIntegerValue.toString(16);
+    if (h.substr(0, 1) != '-') {
+        if (h.length % 2 == 1) {
+        h = '0' + h;
+        } else {
+        if (! h.match(/^[0-7]/)) {
+            h = '00' + h;
+        }
+        }
+    } else {
+        var hPos = h.substr(1);
+        var xorLen = hPos.length;
+        if (xorLen % 2 == 1) {
+        xorLen += 1;
+        } else {
+        if (! h.match(/^[0-7]/)) {
+            xorLen += 2;
+        }
+        }
+        var hMask = '';
+        for (var i = 0; i < xorLen; i++) {
+        hMask += 'f';
+        }
+        var biMask = new BigInteger(hMask, 16);
+        var biNeg = biMask.xor(bigIntegerValue).add(BigInteger.ONE);
+        h = biNeg.toString(16).replace(/^-/, '');
+    }
+    return h;
+    };
+    /**
+     * get PEM string from hexadecimal data and header string
+     * @name getPEMStringFromHex
+     * @memberOf KJUR.asn1.ASN1Util
+     * @function
+     * @param {String} dataHex hexadecimal string of PEM body
+     * @param {String} pemHeader PEM header string (ex. 'RSA PRIVATE KEY')
+     * @return {String} PEM formatted string of input data
+     * @description
+     * @example
+     * var pem  = KJUR.asn1.ASN1Util.getPEMStringFromHex('616161', 'RSA PRIVATE KEY');
+     * // value of pem will be:
+     * -----BEGIN PRIVATE KEY-----
+     * YWFh
+     * -----END PRIVATE KEY-----
+     */
+    this.getPEMStringFromHex = function(dataHex, pemHeader) {
+    var ns1 = KJUR.asn1;
+    var dataWA = CryptoJS.enc.Hex.parse(dataHex);
+    var dataB64 = CryptoJS.enc.Base64.stringify(dataWA);
+    var pemBody = dataB64.replace(/(.{64})/g, "$1\r\n");
+        pemBody = pemBody.replace(/\r\n$/, '');
+    return "-----BEGIN " + pemHeader + "-----\r\n" + 
+               pemBody + 
+               "\r\n-----END " + pemHeader + "-----\r\n";
+    };
+
+    /**
+     * generate ASN1Object specifed by JSON parameters
+     * @name newObject
+     * @memberOf KJUR.asn1.ASN1Util
+     * @function
+     * @param {Array} param JSON parameter to generate ASN1Object
+     * @return {KJUR.asn1.ASN1Object} generated object
+     * @since asn1 1.0.3
+     * @description
+     * generate any ASN1Object specified by JSON param
+     * including ASN.1 primitive or structured.
+     * Generally 'param' can be described as follows:
+     * <blockquote>
+     * {TYPE-OF-ASNOBJ: ASN1OBJ-PARAMETER}
+     * </blockquote>
+     * 'TYPE-OF-ASN1OBJ' can be one of following symbols:
+     * <ul>
+     * <li>'bool' - DERBoolean</li>
+     * <li>'int' - DERInteger</li>
+     * <li>'bitstr' - DERBitString</li>
+     * <li>'octstr' - DEROctetString</li>
+     * <li>'null' - DERNull</li>
+     * <li>'oid' - DERObjectIdentifier</li>
+     * <li>'utf8str' - DERUTF8String</li>
+     * <li>'numstr' - DERNumericString</li>
+     * <li>'prnstr' - DERPrintableString</li>
+     * <li>'telstr' - DERTeletexString</li>
+     * <li>'ia5str' - DERIA5String</li>
+     * <li>'utctime' - DERUTCTime</li>
+     * <li>'gentime' - DERGeneralizedTime</li>
+     * <li>'seq' - DERSequence</li>
+     * <li>'set' - DERSet</li>
+     * <li>'tag' - DERTaggedObject</li>
+     * </ul>
+     * @example
+     * newObject({'prnstr': 'aaa'});
+     * newObject({'seq': [{'int': 3}, {'prnstr': 'aaa'}]})
+     * // ASN.1 Tagged Object
+     * newObject({'tag': {'tag': 'a1', 
+     *                    'explicit': true,
+     *                    'obj': {'seq': [{'int': 3}, {'prnstr': 'aaa'}]}}});
+     * // more simple representation of ASN.1 Tagged Object
+     * newObject({'tag': ['a1',
+     *                    true,
+     *                    {'seq': [
+     *                      {'int': 3}, 
+     *                      {'prnstr': 'aaa'}]}
+     *                   ]});
+     */
+    this.newObject = function(param) {
+    var ns1 = KJUR.asn1;
+    var keys = Object.keys(param);
+    if (keys.length != 1)
+        throw "key of param shall be only one.";
+    var key = keys[0];
+
+    if (":bool:int:bitstr:octstr:null:oid:utf8str:numstr:prnstr:telstr:ia5str:utctime:gentime:seq:set:tag:".indexOf(":" + key + ":") == -1)
+        throw "undefined key: " + key;
+
+    if (key == "bool")    return new ns1.DERBoolean(param[key]);
+    if (key == "int")     return new ns1.DERInteger(param[key]);
+    if (key == "bitstr")  return new ns1.DERBitString(param[key]);
+    if (key == "octstr")  return new ns1.DEROctetString(param[key]);
+    if (key == "null")    return new ns1.DERNull(param[key]);
+    if (key == "oid")     return new ns1.DERObjectIdentifier(param[key]);
+    if (key == "utf8str") return new ns1.DERUTF8String(param[key]);
+    if (key == "numstr")  return new ns1.DERNumericString(param[key]);
+    if (key == "prnstr")  return new ns1.DERPrintableString(param[key]);
+    if (key == "telstr")  return new ns1.DERTeletexString(param[key]);
+    if (key == "ia5str")  return new ns1.DERIA5String(param[key]);
+    if (key == "utctime") return new ns1.DERUTCTime(param[key]);
+    if (key == "gentime") return new ns1.DERGeneralizedTime(param[key]);
+
+    if (key == "seq") {
+        var paramList = param[key];
+        var a = [];
+        for (var i = 0; i < paramList.length; i++) {
+        var asn1Obj = ns1.ASN1Util.newObject(paramList[i]);
+        a.push(asn1Obj);
+        }
+        return new ns1.DERSequence({'array': a});
+    }
+
+    if (key == "set") {
+        var paramList = param[key];
+        var a = [];
+        for (var i = 0; i < paramList.length; i++) {
+        var asn1Obj = ns1.ASN1Util.newObject(paramList[i]);
+        a.push(asn1Obj);
+        }
+        return new ns1.DERSet({'array': a});
+    }
+
+    if (key == "tag") {
+        var tagParam = param[key];
+        if (Object.prototype.toString.call(tagParam) === '[object Array]' &&
+        tagParam.length == 3) {
+        var obj = ns1.ASN1Util.newObject(tagParam[2]);
+        return new ns1.DERTaggedObject({tag: tagParam[0], explicit: tagParam[1], obj: obj});
+        } else {
+        var newParam = {};
+        if (tagParam.explicit !== undefined)
+            newParam.explicit = tagParam.explicit;
+        if (tagParam.tag !== undefined)
+            newParam.tag = tagParam.tag;
+        if (tagParam.obj === undefined)
+            throw "obj shall be specified for 'tag'.";
+        newParam.obj = ns1.ASN1Util.newObject(tagParam.obj);
+        return new ns1.DERTaggedObject(newParam);
+        }
+    }
+    };
+
+    /**
+     * get encoded hexadecimal string of ASN1Object specifed by JSON parameters
+     * @name jsonToASN1HEX
+     * @memberOf KJUR.asn1.ASN1Util
+     * @function
+     * @param {Array} param JSON parameter to generate ASN1Object
+     * @return hexadecimal string of ASN1Object
+     * @since asn1 1.0.4
+     * @description
+     * As for ASN.1 object representation of JSON object,
+     * please see {@link newObject}.
+     * @example
+     * jsonToASN1HEX({'prnstr': 'aaa'}); 
+     */
+    this.jsonToASN1HEX = function(param) {
+    var asn1Obj = this.newObject(param);
+    return asn1Obj.getEncodedHex();
+    };
+};
+
+// ********************************************************************
+//  Abstract ASN.1 Classes
+// ********************************************************************
+
+// ********************************************************************
+
+/**
+ * base class for ASN.1 DER encoder object
+ * @name KJUR.asn1.ASN1Object
+ * @class base class for ASN.1 DER encoder object
+ * @property {Boolean} isModified flag whether internal data was changed
+ * @property {String} hTLV hexadecimal string of ASN.1 TLV
+ * @property {String} hT hexadecimal string of ASN.1 TLV tag(T)
+ * @property {String} hL hexadecimal string of ASN.1 TLV length(L)
+ * @property {String} hV hexadecimal string of ASN.1 TLV value(V)
+ * @description
+ */
+KJUR.asn1.ASN1Object = function() {
+    var isModified = true;
+    var hTLV = null;
+    var hT = '00';
+    var hL = '00';
+    var hV = '';
+
+    /**
+     * get hexadecimal ASN.1 TLV length(L) bytes from TLV value(V)
+     * @name getLengthHexFromValue
+     * @memberOf KJUR.asn1.ASN1Object
+     * @function
+     * @return {String} hexadecimal string of ASN.1 TLV length(L)
+     */
+    this.getLengthHexFromValue = function() {
+    if (typeof this.hV == "undefined" || this.hV == null) {
+        throw "this.hV is null or undefined.";
+    }
+    if (this.hV.length % 2 == 1) {
+        throw "value hex must be even length: n=" + hV.length + ",v=" + this.hV;
+    }
+    var n = this.hV.length / 2;
+    var hN = n.toString(16);
+    if (hN.length % 2 == 1) {
+        hN = "0" + hN;
+    }
+    if (n < 128) {
+        return hN;
+    } else {
+        var hNlen = hN.length / 2;
+        if (hNlen > 15) {
+        throw "ASN.1 length too long to represent by 8x: n = " + n.toString(16);
+        }
+        var head = 128 + hNlen;
+        return head.toString(16) + hN;
+    }
+    };
+
+    /**
+     * get hexadecimal string of ASN.1 TLV bytes
+     * @name getEncodedHex
+     * @memberOf KJUR.asn1.ASN1Object
+     * @function
+     * @return {String} hexadecimal string of ASN.1 TLV
+     */
+    this.getEncodedHex = function() {
+    if (this.hTLV == null || this.isModified) {
+        this.hV = this.getFreshValueHex();
+        this.hL = this.getLengthHexFromValue();
+        this.hTLV = this.hT + this.hL + this.hV;
+        this.isModified = false;
+        //alert("first time: " + this.hTLV);
+    }
+    return this.hTLV;
+    };
+
+    /**
+     * get hexadecimal string of ASN.1 TLV value(V) bytes
+     * @name getValueHex
+     * @memberOf KJUR.asn1.ASN1Object
+     * @function
+     * @return {String} hexadecimal string of ASN.1 TLV value(V) bytes
+     */
+    this.getValueHex = function() {
+    this.getEncodedHex();
+    return this.hV;
+    }
+
+    this.getFreshValueHex = function() {
+    return '';
+    };
+};
+
+// == BEGIN DERAbstractString ================================================
+/**
+ * base class for ASN.1 DER string classes
+ * @name KJUR.asn1.DERAbstractString
+ * @class base class for ASN.1 DER string classes
+ * @param {Array} params associative array of parameters (ex. {'str': 'aaa'})
+ * @property {String} s internal string of value
+ * @extends KJUR.asn1.ASN1Object
+ * @description
+ * <br/>
+ * As for argument 'params' for constructor, you can specify one of
+ * following properties:
+ * <ul>
+ * <li>str - specify initial ASN.1 value(V) by a string</li>
+ * <li>hex - specify initial ASN.1 value(V) by a hexadecimal string</li>
+ * </ul>
+ * NOTE: 'params' can be omitted.
+ */
+KJUR.asn1.DERAbstractString = function(params) {
+    KJUR.asn1.DERAbstractString.superclass.constructor.call(this);
+    var s = null;
+    var hV = null;
+
+    /**
+     * get string value of this string object
+     * @name getString
+     * @memberOf KJUR.asn1.DERAbstractString
+     * @function
+     * @return {String} string value of this string object
+     */
+    this.getString = function() {
+    return this.s;
+    };
+
+    /**
+     * set value by a string
+     * @name setString
+     * @memberOf KJUR.asn1.DERAbstractString
+     * @function
+     * @param {String} newS value by a string to set
+     */
+    this.setString = function(newS) {
+    this.hTLV = null;
+    this.isModified = true;
+    this.s = newS;
+    this.hV = stohex(this.s);
+    };
+
+    /**
+     * set value by a hexadecimal string
+     * @name setStringHex
+     * @memberOf KJUR.asn1.DERAbstractString
+     * @function
+     * @param {String} newHexString value by a hexadecimal string to set
+     */
+    this.setStringHex = function(newHexString) {
+    this.hTLV = null;
+    this.isModified = true;
+    this.s = null;
+    this.hV = newHexString;
+    };
+
+    this.getFreshValueHex = function() {
+    return this.hV;
+    };
+
+    if (typeof params != "undefined") {
+    if (typeof params == "string") {
+        this.setString(params);
+    } else if (typeof params['str'] != "undefined") {
+        this.setString(params['str']);
+    } else if (typeof params['hex'] != "undefined") {
+        this.setStringHex(params['hex']);
+    }
+    }
+};
+YAHOO.lang.extend(KJUR.asn1.DERAbstractString, KJUR.asn1.ASN1Object);
+// == END   DERAbstractString ================================================
+
+// == BEGIN DERAbstractTime ==================================================
+/**
+ * base class for ASN.1 DER Generalized/UTCTime class
+ * @name KJUR.asn1.DERAbstractTime
+ * @class base class for ASN.1 DER Generalized/UTCTime class
+ * @param {Array} params associative array of parameters (ex. {'str': '130430235959Z'})
+ * @extends KJUR.asn1.ASN1Object
+ * @description
+ * @see KJUR.asn1.ASN1Object - superclass
+ */
+KJUR.asn1.DERAbstractTime = function(params) {
+    KJUR.asn1.DERAbstractTime.superclass.constructor.call(this);
+    var s = null;
+    var date = null;
+
+    // --- PRIVATE METHODS --------------------
+    this.localDateToUTC = function(d) {
+    utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+    var utcDate = new Date(utc);
+    return utcDate;
+    };
+
+    this.formatDate = function(dateObject, type) {
+    var pad = this.zeroPadding;
+    var d = this.localDateToUTC(dateObject);
+    var year = String(d.getFullYear());
+    if (type == 'utc') year = year.substr(2, 2);
+    var month = pad(String(d.getMonth() + 1), 2);
+    var day = pad(String(d.getDate()), 2);
+    var hour = pad(String(d.getHours()), 2);
+    var min = pad(String(d.getMinutes()), 2);
+    var sec = pad(String(d.getSeconds()), 2);
+    return year + month + day + hour + min + sec + 'Z';
+    };
+
+    this.zeroPadding = function(s, len) {
+    if (s.length >= len) return s;
+    return new Array(len - s.length + 1).join('0') + s;
+    };
+
+    // --- PUBLIC METHODS --------------------
+    /**
+     * get string value of this string object
+     * @name getString
+     * @memberOf KJUR.asn1.DERAbstractTime
+     * @function
+     * @return {String} string value of this time object
+     */
+    this.getString = function() {
+    return this.s;
+    };
+
+    /**
+     * set value by a string
+     * @name setString
+     * @memberOf KJUR.asn1.DERAbstractTime
+     * @function
+     * @param {String} newS value by a string to set such like "130430235959Z"
+     */
+    this.setString = function(newS) {
+    this.hTLV = null;
+    this.isModified = true;
+    this.s = newS;
+    this.hV = stohex(newS);
+    };
+
+    /**
+     * set value by a Date object
+     * @name setByDateValue
+     * @memberOf KJUR.asn1.DERAbstractTime
+     * @function
+     * @param {Integer} year year of date (ex. 2013)
+     * @param {Integer} month month of date between 1 and 12 (ex. 12)
+     * @param {Integer} day day of month
+     * @param {Integer} hour hours of date
+     * @param {Integer} min minutes of date
+     * @param {Integer} sec seconds of date
+     */
+    this.setByDateValue = function(year, month, day, hour, min, sec) {
+    var dateObject = new Date(Date.UTC(year, month - 1, day, hour, min, sec, 0));
+    this.setByDate(dateObject);
+    };
+
+    this.getFreshValueHex = function() {
+    return this.hV;
+    };
+};
+YAHOO.lang.extend(KJUR.asn1.DERAbstractTime, KJUR.asn1.ASN1Object);
+// == END   DERAbstractTime ==================================================
+
+// == BEGIN DERAbstractStructured ============================================
+/**
+ * base class for ASN.1 DER structured class
+ * @name KJUR.asn1.DERAbstractStructured
+ * @class base class for ASN.1 DER structured class
+ * @property {Array} asn1Array internal array of ASN1Object
+ * @extends KJUR.asn1.ASN1Object
+ * @description
+ * @see KJUR.asn1.ASN1Object - superclass
+ */
+KJUR.asn1.DERAbstractStructured = function(params) {
+    KJUR.asn1.DERAbstractString.superclass.constructor.call(this);
+    var asn1Array = null;
+
+    /**
+     * set value by array of ASN1Object
+     * @name setByASN1ObjectArray
+     * @memberOf KJUR.asn1.DERAbstractStructured
+     * @function
+     * @param {array} asn1ObjectArray array of ASN1Object to set
+     */
+    this.setByASN1ObjectArray = function(asn1ObjectArray) {
+    this.hTLV = null;
+    this.isModified = true;
+    this.asn1Array = asn1ObjectArray;
+    };
+
+    /**
+     * append an ASN1Object to internal array
+     * @name appendASN1Object
+     * @memberOf KJUR.asn1.DERAbstractStructured
+     * @function
+     * @param {ASN1Object} asn1Object to add
+     */
+    this.appendASN1Object = function(asn1Object) {
+    this.hTLV = null;
+    this.isModified = true;
+    this.asn1Array.push(asn1Object);
+    };
+
+    this.asn1Array = new Array();
+    if (typeof params != "undefined") {
+    if (typeof params['array'] != "undefined") {
+        this.asn1Array = params['array'];
+    }
+    }
+};
+YAHOO.lang.extend(KJUR.asn1.DERAbstractStructured, KJUR.asn1.ASN1Object);
+
+
+// ********************************************************************
+//  ASN.1 Object Classes
+// ********************************************************************
+
+// ********************************************************************
+/**
+ * class for ASN.1 DER Boolean
+ * @name KJUR.asn1.DERBoolean
+ * @class class for ASN.1 DER Boolean
+ * @extends KJUR.asn1.ASN1Object
+ * @description
+ * @see KJUR.asn1.ASN1Object - superclass
+ */
+KJUR.asn1.DERBoolean = function() {
+    KJUR.asn1.DERBoolean.superclass.constructor.call(this);
+    this.hT = "01";
+    this.hTLV = "0101ff";
+};
+YAHOO.lang.extend(KJUR.asn1.DERBoolean, KJUR.asn1.ASN1Object);
+
+// ********************************************************************
+/**
+ * class for ASN.1 DER Integer
+ * @name KJUR.asn1.DERInteger
+ * @class class for ASN.1 DER Integer
+ * @extends KJUR.asn1.ASN1Object
+ * @description
+ * <br/>
+ * As for argument 'params' for constructor, you can specify one of
+ * following properties:
+ * <ul>
+ * <li>int - specify initial ASN.1 value(V) by integer value</li>
+ * <li>bigint - specify initial ASN.1 value(V) by BigInteger object</li>
+ * <li>hex - specify initial ASN.1 value(V) by a hexadecimal string</li>
+ * </ul>
+ * NOTE: 'params' can be omitted.
+ */
+KJUR.asn1.DERInteger = function(params) {
+    KJUR.asn1.DERInteger.superclass.constructor.call(this);
+    this.hT = "02";
+
+    /**
+     * set value by Tom Wu's BigInteger object
+     * @name setByBigInteger
+     * @memberOf KJUR.asn1.DERInteger
+     * @function
+     * @param {BigInteger} bigIntegerValue to set
+     */
+    this.setByBigInteger = function(bigIntegerValue) {
+    this.hTLV = null;
+    this.isModified = true;
+    this.hV = KJUR.asn1.ASN1Util.bigIntToMinTwosComplementsHex(bigIntegerValue);
+    };
+
+    /**
+     * set value by integer value
+     * @name setByInteger
+     * @memberOf KJUR.asn1.DERInteger
+     * @function
+     * @param {Integer} integer value to set
+     */
+    this.setByInteger = function(intValue) {
+    var bi = new BigInteger(String(intValue), 10);
+    this.setByBigInteger(bi);
+    };
+
+    /**
+     * set value by integer value
+     * @name setValueHex
+     * @memberOf KJUR.asn1.DERInteger
+     * @function
+     * @param {String} hexadecimal string of integer value
+     * @description
+     * <br/>
+     * NOTE: Value shall be represented by minimum octet length of
+     * two's complement representation.
+     * @example
+     * new KJUR.asn1.DERInteger(123);
+     * new KJUR.asn1.DERInteger({'int': 123});
+     * new KJUR.asn1.DERInteger({'hex': '1fad'});
+     */
+    this.setValueHex = function(newHexString) {
+    this.hV = newHexString;
+    };
+
+    this.getFreshValueHex = function() {
+    return this.hV;
+    };
+
+    if (typeof params != "undefined") {
+    if (typeof params['bigint'] != "undefined") {
+        this.setByBigInteger(params['bigint']);
+    } else if (typeof params['int'] != "undefined") {
+        this.setByInteger(params['int']);
+    } else if (typeof params == "number") {
+        this.setByInteger(params);
+    } else if (typeof params['hex'] != "undefined") {
+        this.setValueHex(params['hex']);
+    }
+    }
+};
+YAHOO.lang.extend(KJUR.asn1.DERInteger, KJUR.asn1.ASN1Object);
+
+// ********************************************************************
+/**
+ * class for ASN.1 DER encoded BitString primitive
+ * @name KJUR.asn1.DERBitString
+ * @class class for ASN.1 DER encoded BitString primitive
+ * @extends KJUR.asn1.ASN1Object
+ * @description 
+ * <br/>
+ * As for argument 'params' for constructor, you can specify one of
+ * following properties:
+ * <ul>
+ * <li>bin - specify binary string (ex. '10111')</li>
+ * <li>array - specify array of boolean (ex. [true,false,true,true])</li>
+ * <li>hex - specify hexadecimal string of ASN.1 value(V) including unused bits</li>
+ * </ul>
+ * NOTE: 'params' can be omitted.
+ */
+KJUR.asn1.DERBitString = function(params) {
+    KJUR.asn1.DERBitString.superclass.constructor.call(this);
+    this.hT = "03";
+
+    /**
+     * set ASN.1 value(V) by a hexadecimal string including unused bits
+     * @name setHexValueIncludingUnusedBits
+     * @memberOf KJUR.asn1.DERBitString
+     * @function
+     * @param {String} newHexStringIncludingUnusedBits
+     */
+    this.setHexValueIncludingUnusedBits = function(newHexStringIncludingUnusedBits) {
+    this.hTLV = null;
+    this.isModified = true;
+    this.hV = newHexStringIncludingUnusedBits;
+    };
+
+    /**
+     * set ASN.1 value(V) by unused bit and hexadecimal string of value
+     * @name setUnusedBitsAndHexValue
+     * @memberOf KJUR.asn1.DERBitString
+     * @function
+     * @param {Integer} unusedBits
+     * @param {String} hValue
+     */
+    this.setUnusedBitsAndHexValue = function(unusedBits, hValue) {
+    if (unusedBits < 0 || 7 < unusedBits) {
+        throw "unused bits shall be from 0 to 7: u = " + unusedBits;
+    }
+    var hUnusedBits = "0" + unusedBits;
+    this.hTLV = null;
+    this.isModified = true;
+    this.hV = hUnusedBits + hValue;
+    };
+
+    /**
+     * set ASN.1 DER BitString by binary string
+     * @name setByBinaryString
+     * @memberOf KJUR.asn1.DERBitString
+     * @function
+     * @param {String} binaryString binary value string (i.e. '10111')
+     * @description
+     * Its unused bits will be calculated automatically by length of 
+     * 'binaryValue'. <br/>
+     * NOTE: Trailing zeros '0' will be ignored.
+     */
+    this.setByBinaryString = function(binaryString) {
+    binaryString = binaryString.replace(/0+$/, '');
+    var unusedBits = 8 - binaryString.length % 8;
+    if (unusedBits == 8) unusedBits = 0;
+    for (var i = 0; i <= unusedBits; i++) {
+        binaryString += '0';
+    }
+    var h = '';
+    for (var i = 0; i < binaryString.length - 1; i += 8) {
+        var b = binaryString.substr(i, 8);
+        var x = parseInt(b, 2).toString(16);
+        if (x.length == 1) x = '0' + x;
+        h += x;  
+    }
+    this.hTLV = null;
+    this.isModified = true;
+    this.hV = '0' + unusedBits + h;
+    };
+
+    /**
+     * set ASN.1 TLV value(V) by an array of boolean
+     * @name setByBooleanArray
+     * @memberOf KJUR.asn1.DERBitString
+     * @function
+     * @param {array} booleanArray array of boolean (ex. [true, false, true])
+     * @description
+     * NOTE: Trailing falses will be ignored.
+     */
+    this.setByBooleanArray = function(booleanArray) {
+    var s = '';
+    for (var i = 0; i < booleanArray.length; i++) {
+        if (booleanArray[i] == true) {
+        s += '1';
+        } else {
+        s += '0';
+        }
+    }
+    this.setByBinaryString(s);
+    };
+
+    /**
+     * generate an array of false with specified length
+     * @name newFalseArray
+     * @memberOf KJUR.asn1.DERBitString
+     * @function
+     * @param {Integer} nLength length of array to generate
+     * @return {array} array of boolean faluse
+     * @description
+     * This static method may be useful to initialize boolean array.
+     */
+    this.newFalseArray = function(nLength) {
+    var a = new Array(nLength);
+    for (var i = 0; i < nLength; i++) {
+        a[i] = false;
+    }
+    return a;
+    };
+
+    this.getFreshValueHex = function() {
+    return this.hV;
+    };
+
+    if (typeof params != "undefined") {
+    if (typeof params == "string" && params.toLowerCase().match(/^[0-9a-f]+$/)) {
+        this.setHexValueIncludingUnusedBits(params);
+        } else if (typeof params['hex'] != "undefined") {
+        this.setHexValueIncludingUnusedBits(params['hex']);
+    } else if (typeof params['bin'] != "undefined") {
+        this.setByBinaryString(params['bin']);
+    } else if (typeof params['array'] != "undefined") {
+        this.setByBooleanArray(params['array']);
+    }
+    }
+};
+YAHOO.lang.extend(KJUR.asn1.DERBitString, KJUR.asn1.ASN1Object);
+
+// ********************************************************************
+/**
+ * class for ASN.1 DER OctetString
+ * @name KJUR.asn1.DEROctetString
+ * @class class for ASN.1 DER OctetString
+ * @param {Array} params associative array of parameters (ex. {'str': 'aaa'})
+ * @extends KJUR.asn1.DERAbstractString
+ * @description
+ * @see KJUR.asn1.DERAbstractString - superclass
+ */
+KJUR.asn1.DEROctetString = function(params) {
+    KJUR.asn1.DEROctetString.superclass.constructor.call(this, params);
+    this.hT = "04";
+};
+YAHOO.lang.extend(KJUR.asn1.DEROctetString, KJUR.asn1.DERAbstractString);
+
+// ********************************************************************
+/**
+ * class for ASN.1 DER Null
+ * @name KJUR.asn1.DERNull
+ * @class class for ASN.1 DER Null
+ * @extends KJUR.asn1.ASN1Object
+ * @description
+ * @see KJUR.asn1.ASN1Object - superclass
+ */
+KJUR.asn1.DERNull = function() {
+    KJUR.asn1.DERNull.superclass.constructor.call(this);
+    this.hT = "05";
+    this.hTLV = "0500";
+};
+YAHOO.lang.extend(KJUR.asn1.DERNull, KJUR.asn1.ASN1Object);
+
+// ********************************************************************
+/**
+ * class for ASN.1 DER ObjectIdentifier
+ * @name KJUR.asn1.DERObjectIdentifier
+ * @class class for ASN.1 DER ObjectIdentifier
+ * @param {Array} params associative array of parameters (ex. {'oid': '2.5.4.5'})
+ * @extends KJUR.asn1.ASN1Object
+ * @description
+ * <br/>
+ * As for argument 'params' for constructor, you can specify one of
+ * following properties:
+ * <ul>
+ * <li>oid - specify initial ASN.1 value(V) by a oid string (ex. 2.5.4.13)</li>
+ * <li>hex - specify initial ASN.1 value(V) by a hexadecimal string</li>
+ * </ul>
+ * NOTE: 'params' can be omitted.
+ */
+KJUR.asn1.DERObjectIdentifier = function(params) {
+    var itox = function(i) {
+    var h = i.toString(16);
+    if (h.length == 1) h = '0' + h;
+    return h;
+    };
+    var roidtox = function(roid) {
+    var h = '';
+    var bi = new BigInteger(roid, 10);
+    var b = bi.toString(2);
+    var padLen = 7 - b.length % 7;
+    if (padLen == 7) padLen = 0;
+    var bPad = '';
+    for (var i = 0; i < padLen; i++) bPad += '0';
+    b = bPad + b;
+    for (var i = 0; i < b.length - 1; i += 7) {
+        var b8 = b.substr(i, 7);
+        if (i != b.length - 7) b8 = '1' + b8;
+        h += itox(parseInt(b8, 2));
+    }
+    return h;
+    }
+
+    KJUR.asn1.DERObjectIdentifier.superclass.constructor.call(this);
+    this.hT = "06";
+
+    /**
+     * set value by a hexadecimal string
+     * @name setValueHex
+     * @memberOf KJUR.asn1.DERObjectIdentifier
+     * @function
+     * @param {String} newHexString hexadecimal value of OID bytes
+     */
+    this.setValueHex = function(newHexString) {
+    this.hTLV = null;
+    this.isModified = true;
+    this.s = null;
+    this.hV = newHexString;
+    };
+
+    /**
+     * set value by a OID string
+     * @name setValueOidString
+     * @memberOf KJUR.asn1.DERObjectIdentifier
+     * @function
+     * @param {String} oidString OID string (ex. 2.5.4.13)
+     */
+    this.setValueOidString = function(oidString) {
+    if (! oidString.match(/^[0-9.]+$/)) {
+        throw "malformed oid string: " + oidString;
+    }
+    var h = '';
+    var a = oidString.split('.');
+    var i0 = parseInt(a[0]) * 40 + parseInt(a[1]);
+    h += itox(i0);
+    a.splice(0, 2);
+    for (var i = 0; i < a.length; i++) {
+        h += roidtox(a[i]);
+    }
+    this.hTLV = null;
+    this.isModified = true;
+    this.s = null;
+    this.hV = h;
+    };
+
+    /**
+     * set value by a OID name
+     * @name setValueName
+     * @memberOf KJUR.asn1.DERObjectIdentifier
+     * @function
+     * @param {String} oidName OID name (ex. 'serverAuth')
+     * @since 1.0.1
+     * @description
+     * OID name shall be defined in 'KJUR.asn1.x509.OID.name2oidList'.
+     * Otherwise raise error.
+     */
+    this.setValueName = function(oidName) {
+    if (typeof KJUR.asn1.x509.OID.name2oidList[oidName] != "undefined") {
+        var oid = KJUR.asn1.x509.OID.name2oidList[oidName];
+        this.setValueOidString(oid);
+    } else {
+        throw "DERObjectIdentifier oidName undefined: " + oidName;
+    }
+    };
+
+    this.getFreshValueHex = function() {
+    return this.hV;
+    };
+
+    if (typeof params != "undefined") {
+    if (typeof params == "string" && params.match(/^[0-2].[0-9.]+$/)) {
+        this.setValueOidString(params);
+    } else if (KJUR.asn1.x509.OID.name2oidList[params] !== undefined) {
+        this.setValueOidString(KJUR.asn1.x509.OID.name2oidList[params]);
+    } else if (typeof params['oid'] != "undefined") {
+        this.setValueOidString(params['oid']);
+    } else if (typeof params['hex'] != "undefined") {
+        this.setValueHex(params['hex']);
+    } else if (typeof params['name'] != "undefined") {
+        this.setValueName(params['name']);
+    }
+    }
+};
+YAHOO.lang.extend(KJUR.asn1.DERObjectIdentifier, KJUR.asn1.ASN1Object);
+
+// ********************************************************************
+/**
+ * class for ASN.1 DER UTF8String
+ * @name KJUR.asn1.DERUTF8String
+ * @class class for ASN.1 DER UTF8String
+ * @param {Array} params associative array of parameters (ex. {'str': 'aaa'})
+ * @extends KJUR.asn1.DERAbstractString
+ * @description
+ * @see KJUR.asn1.DERAbstractString - superclass
+ */
+KJUR.asn1.DERUTF8String = function(params) {
+    KJUR.asn1.DERUTF8String.superclass.constructor.call(this, params);
+    this.hT = "0c";
+};
+YAHOO.lang.extend(KJUR.asn1.DERUTF8String, KJUR.asn1.DERAbstractString);
+
+// ********************************************************************
+/**
+ * class for ASN.1 DER NumericString
+ * @name KJUR.asn1.DERNumericString
+ * @class class for ASN.1 DER NumericString
+ * @param {Array} params associative array of parameters (ex. {'str': 'aaa'})
+ * @extends KJUR.asn1.DERAbstractString
+ * @description
+ * @see KJUR.asn1.DERAbstractString - superclass
+ */
+KJUR.asn1.DERNumericString = function(params) {
+    KJUR.asn1.DERNumericString.superclass.constructor.call(this, params);
+    this.hT = "12";
+};
+YAHOO.lang.extend(KJUR.asn1.DERNumericString, KJUR.asn1.DERAbstractString);
+
+// ********************************************************************
+/**
+ * class for ASN.1 DER PrintableString
+ * @name KJUR.asn1.DERPrintableString
+ * @class class for ASN.1 DER PrintableString
+ * @param {Array} params associative array of parameters (ex. {'str': 'aaa'})
+ * @extends KJUR.asn1.DERAbstractString
+ * @description
+ * @see KJUR.asn1.DERAbstractString - superclass
+ */
+KJUR.asn1.DERPrintableString = function(params) {
+    KJUR.asn1.DERPrintableString.superclass.constructor.call(this, params);
+    this.hT = "13";
+};
+YAHOO.lang.extend(KJUR.asn1.DERPrintableString, KJUR.asn1.DERAbstractString);
+
+// ********************************************************************
+/**
+ * class for ASN.1 DER TeletexString
+ * @name KJUR.asn1.DERTeletexString
+ * @class class for ASN.1 DER TeletexString
+ * @param {Array} params associative array of parameters (ex. {'str': 'aaa'})
+ * @extends KJUR.asn1.DERAbstractString
+ * @description
+ * @see KJUR.asn1.DERAbstractString - superclass
+ */
+KJUR.asn1.DERTeletexString = function(params) {
+    KJUR.asn1.DERTeletexString.superclass.constructor.call(this, params);
+    this.hT = "14";
+};
+YAHOO.lang.extend(KJUR.asn1.DERTeletexString, KJUR.asn1.DERAbstractString);
+
+// ********************************************************************
+/**
+ * class for ASN.1 DER IA5String
+ * @name KJUR.asn1.DERIA5String
+ * @class class for ASN.1 DER IA5String
+ * @param {Array} params associative array of parameters (ex. {'str': 'aaa'})
+ * @extends KJUR.asn1.DERAbstractString
+ * @description
+ * @see KJUR.asn1.DERAbstractString - superclass
+ */
+KJUR.asn1.DERIA5String = function(params) {
+    KJUR.asn1.DERIA5String.superclass.constructor.call(this, params);
+    this.hT = "16";
+};
+YAHOO.lang.extend(KJUR.asn1.DERIA5String, KJUR.asn1.DERAbstractString);
+
+// ********************************************************************
+/**
+ * class for ASN.1 DER UTCTime
+ * @name KJUR.asn1.DERUTCTime
+ * @class class for ASN.1 DER UTCTime
+ * @param {Array} params associative array of parameters (ex. {'str': '130430235959Z'})
+ * @extends KJUR.asn1.DERAbstractTime
+ * @description
+ * <br/>
+ * As for argument 'params' for constructor, you can specify one of
+ * following properties:
+ * <ul>
+ * <li>str - specify initial ASN.1 value(V) by a string (ex.'130430235959Z')</li>
+ * <li>hex - specify initial ASN.1 value(V) by a hexadecimal string</li>
+ * <li>date - specify Date object.</li>
+ * </ul>
+ * NOTE: 'params' can be omitted.
+ * <h4>EXAMPLES</h4>
+ * @example
+ * var d1 = new KJUR.asn1.DERUTCTime();
+ * d1.setString('130430125959Z');
+ *
+ * var d2 = new KJUR.asn1.DERUTCTime({'str': '130430125959Z'});
+ * var d3 = new KJUR.asn1.DERUTCTime({'date': new Date(Date.UTC(2015, 0, 31, 0, 0, 0, 0))});
+ * var d4 = new KJUR.asn1.DERUTCTime('130430125959Z');
+ */
+KJUR.asn1.DERUTCTime = function(params) {
+    KJUR.asn1.DERUTCTime.superclass.constructor.call(this, params);
+    this.hT = "17";
+
+    /**
+     * set value by a Date object
+     * @name setByDate
+     * @memberOf KJUR.asn1.DERUTCTime
+     * @function
+     * @param {Date} dateObject Date object to set ASN.1 value(V)
+     */
+    this.setByDate = function(dateObject) {
+    this.hTLV = null;
+    this.isModified = true;
+    this.date = dateObject;
+    this.s = this.formatDate(this.date, 'utc');
+    this.hV = stohex(this.s);
+    };
+
+    if (typeof params != "undefined") {
+    if (typeof params['str'] != "undefined") {
+        this.setString(params['str']);
+    } else if (typeof params == "string" && params.match(/^[0-9]{12}Z$/)) {
+        this.setString(params);
+    } else if (typeof params['hex'] != "undefined") {
+        this.setStringHex(params['hex']);
+    } else if (typeof params['date'] != "undefined") {
+        this.setByDate(params['date']);
+    }
+    }
+};
+YAHOO.lang.extend(KJUR.asn1.DERUTCTime, KJUR.asn1.DERAbstractTime);
+
+// ********************************************************************
+/**
+ * class for ASN.1 DER GeneralizedTime
+ * @name KJUR.asn1.DERGeneralizedTime
+ * @class class for ASN.1 DER GeneralizedTime
+ * @param {Array} params associative array of parameters (ex. {'str': '20130430235959Z'})
+ * @extends KJUR.asn1.DERAbstractTime
+ * @description
+ * <br/>
+ * As for argument 'params' for constructor, you can specify one of
+ * following properties:
+ * <ul>
+ * <li>str - specify initial ASN.1 value(V) by a string (ex.'20130430235959Z')</li>
+ * <li>hex - specify initial ASN.1 value(V) by a hexadecimal string</li>
+ * <li>date - specify Date object.</li>
+ * </ul>
+ * NOTE: 'params' can be omitted.
+ */
+KJUR.asn1.DERGeneralizedTime = function(params) {
+    KJUR.asn1.DERGeneralizedTime.superclass.constructor.call(this, params);
+    this.hT = "18";
+
+    /**
+     * set value by a Date object
+     * @name setByDate
+     * @memberOf KJUR.asn1.DERGeneralizedTime
+     * @function
+     * @param {Date} dateObject Date object to set ASN.1 value(V)
+     * @example
+     * When you specify UTC time, use 'Date.UTC' method like this:<br/>
+     * var o = new DERUTCTime();
+     * var date = new Date(Date.UTC(2015, 0, 31, 23, 59, 59, 0)); #2015JAN31 23:59:59
+     * o.setByDate(date);
+     */
+    this.setByDate = function(dateObject) {
+    this.hTLV = null;
+    this.isModified = true;
+    this.date = dateObject;
+    this.s = this.formatDate(this.date, 'gen');
+    this.hV = stohex(this.s);
+    };
+
+    if (typeof params != "undefined") {
+    if (typeof params['str'] != "undefined") {
+        this.setString(params['str']);
+    } else if (typeof params == "string" && params.match(/^[0-9]{14}Z$/)) {
+        this.setString(params);
+    } else if (typeof params['hex'] != "undefined") {
+        this.setStringHex(params['hex']);
+    } else if (typeof params['date'] != "undefined") {
+        this.setByDate(params['date']);
+    }
+    }
+};
+YAHOO.lang.extend(KJUR.asn1.DERGeneralizedTime, KJUR.asn1.DERAbstractTime);
+
+// ********************************************************************
+/**
+ * class for ASN.1 DER Sequence
+ * @name KJUR.asn1.DERSequence
+ * @class class for ASN.1 DER Sequence
+ * @extends KJUR.asn1.DERAbstractStructured
+ * @description
+ * <br/>
+ * As for argument 'params' for constructor, you can specify one of
+ * following properties:
+ * <ul>
+ * <li>array - specify array of ASN1Object to set elements of content</li>
+ * </ul>
+ * NOTE: 'params' can be omitted.
+ */
+KJUR.asn1.DERSequence = function(params) {
+    KJUR.asn1.DERSequence.superclass.constructor.call(this, params);
+    this.hT = "30";
+    this.getFreshValueHex = function() {
+    var h = '';
+    for (var i = 0; i < this.asn1Array.length; i++) {
+        var asn1Obj = this.asn1Array[i];
+        h += asn1Obj.getEncodedHex();
+    }
+    this.hV = h;
+    return this.hV;
+    };
+};
+YAHOO.lang.extend(KJUR.asn1.DERSequence, KJUR.asn1.DERAbstractStructured);
+
+// ********************************************************************
+/**
+ * class for ASN.1 DER Set
+ * @name KJUR.asn1.DERSet
+ * @class class for ASN.1 DER Set
+ * @extends KJUR.asn1.DERAbstractStructured
+ * @description
+ * <br/>
+ * As for argument 'params' for constructor, you can specify one of
+ * following properties:
+ * <ul>
+ * <li>array - specify array of ASN1Object to set elements of content</li>
+ * </ul>
+ * NOTE: 'params' can be omitted.
+ */
+KJUR.asn1.DERSet = function(params) {
+    KJUR.asn1.DERSet.superclass.constructor.call(this, params);
+    this.hT = "31";
+    this.getFreshValueHex = function() {
+    var a = new Array();
+    for (var i = 0; i < this.asn1Array.length; i++) {
+        var asn1Obj = this.asn1Array[i];
+        a.push(asn1Obj.getEncodedHex());
+    }
+    a.sort();
+    this.hV = a.join('');
+    return this.hV;
+    };
+};
+YAHOO.lang.extend(KJUR.asn1.DERSet, KJUR.asn1.DERAbstractStructured);
+
+// ********************************************************************
+/**
+ * class for ASN.1 DER TaggedObject
+ * @name KJUR.asn1.DERTaggedObject
+ * @class class for ASN.1 DER TaggedObject
+ * @extends KJUR.asn1.ASN1Object
+ * @description
+ * <br/>
+ * Parameter 'tagNoNex' is ASN.1 tag(T) value for this object.
+ * For example, if you find '[1]' tag in a ASN.1 dump, 
+ * 'tagNoHex' will be 'a1'.
+ * <br/>
+ * As for optional argument 'params' for constructor, you can specify *ANY* of
+ * following properties:
+ * <ul>
+ * <li>explicit - specify true if this is explicit tag otherwise false 
+ *     (default is 'true').</li>
+ * <li>tag - specify tag (default is 'a0' which means [0])</li>
+ * <li>obj - specify ASN1Object which is tagged</li>
+ * </ul>
+ * @example
+ * d1 = new KJUR.asn1.DERUTF8String({'str':'a'});
+ * d2 = new KJUR.asn1.DERTaggedObject({'obj': d1});
+ * hex = d2.getEncodedHex();
+ */
+KJUR.asn1.DERTaggedObject = function(params) {
+    KJUR.asn1.DERTaggedObject.superclass.constructor.call(this);
+    this.hT = "a0";
+    this.hV = '';
+    this.isExplicit = true;
+    this.asn1Object = null;
+
+    /**
+     * set value by an ASN1Object
+     * @name setString
+     * @memberOf KJUR.asn1.DERTaggedObject
+     * @function
+     * @param {Boolean} isExplicitFlag flag for explicit/implicit tag
+     * @param {Integer} tagNoHex hexadecimal string of ASN.1 tag
+     * @param {ASN1Object} asn1Object ASN.1 to encapsulate
+     */
+    this.setASN1Object = function(isExplicitFlag, tagNoHex, asn1Object) {
+    this.hT = tagNoHex;
+    this.isExplicit = isExplicitFlag;
+    this.asn1Object = asn1Object;
+    if (this.isExplicit) {
+        this.hV = this.asn1Object.getEncodedHex();
+        this.hTLV = null;
+        this.isModified = true;
+    } else {
+        this.hV = null;
+        this.hTLV = asn1Object.getEncodedHex();
+        this.hTLV = this.hTLV.replace(/^../, tagNoHex);
+        this.isModified = false;
+    }
+    };
+
+    this.getFreshValueHex = function() {
+    return this.hV;
+    };
+
+    if (typeof params != "undefined") {
+    if (typeof params['tag'] != "undefined") {
+        this.hT = params['tag'];
+    }
+    if (typeof params['explicit'] != "undefined") {
+        this.isExplicit = params['explicit'];
+    }
+    if (typeof params['obj'] != "undefined") {
+        this.asn1Object = params['obj'];
+        this.setASN1Object(this.isExplicit, this.hT, this.asn1Object);
+    }
+    }
+};
+YAHOO.lang.extend(KJUR.asn1.DERTaggedObject, KJUR.asn1.ASN1Object);
 
 /*! asn1x509-1.0.7.js (c) 2013 Kenji Urushima | kjur.github.com/jsrsasign/license
  */
@@ -7547,7 +10388,6 @@ X500NameBuilder
 org.bouncycastleasn1.x509
 TBSCertificate
  */
-
 /*! crypto-1.1.5.js (c) 2013 Kenji Urushima | kjur.github.com/jsrsasign/license
  */
 /*
@@ -8754,7 +11594,9 @@ KJUR.crypto.OID = new function() {
     '608648016503040302': 'SHA256withDSA', // 2.16.840.1.101.3.4.3.2
     };
 };
-
+/*! keyutil-1.0.14.js (c) 2013-2016 Kenji Urushima | kjur.github.com/jsrsasign/license
+ */
+var KEYUTIL=function(){var d=function(p,r,q){return k(CryptoJS.AES,p,r,q)};var e=function(p,r,q){return k(CryptoJS.TripleDES,p,r,q)};var a=function(p,r,q){return k(CryptoJS.DES,p,r,q)};var k=function(s,x,u,q){var r=CryptoJS.enc.Hex.parse(x);var w=CryptoJS.enc.Hex.parse(u);var p=CryptoJS.enc.Hex.parse(q);var t={};t.key=w;t.iv=p;t.ciphertext=r;var v=s.decrypt(t,w,{iv:p});return CryptoJS.enc.Hex.stringify(v)};var l=function(p,r,q){return g(CryptoJS.AES,p,r,q)};var o=function(p,r,q){return g(CryptoJS.TripleDES,p,r,q)};var f=function(p,r,q){return g(CryptoJS.DES,p,r,q)};var g=function(t,y,v,q){var s=CryptoJS.enc.Hex.parse(y);var x=CryptoJS.enc.Hex.parse(v);var p=CryptoJS.enc.Hex.parse(q);var w=t.encrypt(s,x,{iv:p});var r=CryptoJS.enc.Hex.parse(w.toString());var u=CryptoJS.enc.Base64.stringify(r);return u};var i={"AES-256-CBC":{proc:d,eproc:l,keylen:32,ivlen:16},"AES-192-CBC":{proc:d,eproc:l,keylen:24,ivlen:16},"AES-128-CBC":{proc:d,eproc:l,keylen:16,ivlen:16},"DES-EDE3-CBC":{proc:e,eproc:o,keylen:24,ivlen:8},"DES-CBC":{proc:a,eproc:f,keylen:8,ivlen:8}};var c=function(p){return i[p]["proc"]};var m=function(p){var r=CryptoJS.lib.WordArray.random(p);var q=CryptoJS.enc.Hex.stringify(r);return q};var n=function(v){var w={};var q=v.match(new RegExp("DEK-Info: ([^,]+),([0-9A-Fa-f]+)","m"));if(q){w.cipher=q[1];w.ivsalt=q[2]}var p=v.match(new RegExp("-----BEGIN ([A-Z]+) PRIVATE KEY-----"));if(p){w.type=p[1]}var u=-1;var x=0;if(v.indexOf("\r\n\r\n")!=-1){u=v.indexOf("\r\n\r\n");x=2}if(v.indexOf("\n\n")!=-1){u=v.indexOf("\n\n");x=1}var t=v.indexOf("-----END");if(u!=-1&&t!=-1){var r=v.substring(u+x*2,t-x);r=r.replace(/\s+/g,"");w.data=r}return w};var j=function(q,y,p){var v=p.substring(0,16);var t=CryptoJS.enc.Hex.parse(v);var r=CryptoJS.enc.Utf8.parse(y);var u=i[q]["keylen"]+i[q]["ivlen"];var x="";var w=null;for(;;){var s=CryptoJS.algo.MD5.create();if(w!=null){s.update(w)}s.update(r);s.update(t);w=s.finalize();x=x+CryptoJS.enc.Hex.stringify(w);if(x.length>=u*2){break}}var z={};z.keyhex=x.substr(0,i[q]["keylen"]*2);z.ivhex=x.substr(i[q]["keylen"]*2,i[q]["ivlen"]*2);return z};var b=function(p,v,r,w){var s=CryptoJS.enc.Base64.parse(p);var q=CryptoJS.enc.Hex.stringify(s);var u=i[v]["proc"];var t=u(q,r,w);return t};var h=function(p,s,q,u){var r=i[s]["eproc"];var t=r(p,q,u);return t};return{version:"1.0.0",getHexFromPEM:function(q,u){var r=q;if(r.indexOf("-----BEGIN ")==-1){throw"can't find PEM header: "+u}if(typeof u=="string"&&u!=""){r=r.replace("-----BEGIN "+u+"-----","");r=r.replace("-----END "+u+"-----","")}else{r=r.replace(/-----BEGIN [^-]+-----/,"");r=r.replace(/-----END [^-]+-----/,"")}var t=r.replace(/\s+/g,"");var p=b64tohex(t);return p},getDecryptedKeyHexByKeyIV:function(q,t,s,r){var p=c(t);return p(q,s,r)},parsePKCS5PEM:function(p){return n(p)},getKeyAndUnusedIvByPasscodeAndIvsalt:function(q,p,r){return j(q,p,r)},decryptKeyB64:function(p,r,q,s){return b(p,r,q,s)},getDecryptedKeyHex:function(y,x){var q=n(y);var t=q.type;var r=q.cipher;var p=q.ivsalt;var s=q.data;var w=j(r,x,p);var v=w.keyhex;var u=b(s,r,v,p);return u},getRSAKeyFromEncryptedPKCS5PEM:function(r,q){var s=this.getDecryptedKeyHex(r,q);var p=new RSAKey();p.readPrivateKeyFromASN1HexString(s);return p},getEncryptedPKCS5PEMFromPrvKeyHex:function(x,s,A,t,r){var p="";if(typeof t=="undefined"||t==null){t="AES-256-CBC"}if(typeof i[t]=="undefined"){throw"KEYUTIL unsupported algorithm: "+t}if(typeof r=="undefined"||r==null){var v=i[t]["ivlen"];var u=m(v);r=u.toUpperCase()}var z=j(t,A,r);var y=z.keyhex;var w=h(s,t,y,r);var q=w.replace(/(.{64})/g,"$1\r\n");var p="-----BEGIN "+x+" PRIVATE KEY-----\r\n";p+="Proc-Type: 4,ENCRYPTED\r\n";p+="DEK-Info: "+t+","+r+"\r\n";p+="\r\n";p+=q;p+="\r\n-----END "+x+" PRIVATE KEY-----\r\n";return p},getEncryptedPKCS5PEMFromRSAKey:function(D,E,r,t){var B=new KJUR.asn1.DERInteger({"int":0});var w=new KJUR.asn1.DERInteger({bigint:D.n});var A=new KJUR.asn1.DERInteger({"int":D.e});var C=new KJUR.asn1.DERInteger({bigint:D.d});var u=new KJUR.asn1.DERInteger({bigint:D.p});var s=new KJUR.asn1.DERInteger({bigint:D.q});var z=new KJUR.asn1.DERInteger({bigint:D.dmp1});var v=new KJUR.asn1.DERInteger({bigint:D.dmq1});var y=new KJUR.asn1.DERInteger({bigint:D.coeff});var F=new KJUR.asn1.DERSequence({array:[B,w,A,C,u,s,z,v,y]});var x=F.getEncodedHex();return this.getEncryptedPKCS5PEMFromPrvKeyHex("RSA",x,E,r,t)},newEncryptedPKCS5PEM:function(p,q,t,u){if(typeof q=="undefined"||q==null){q=1024}if(typeof t=="undefined"||t==null){t="10001"}var r=new RSAKey();r.generate(q,t);var s=null;if(typeof u=="undefined"||u==null){s=this.getEncryptedPKCS5PEMFromRSAKey(r,p)}else{s=this.getEncryptedPKCS5PEMFromRSAKey(r,p,u)}return s},getRSAKeyFromPlainPKCS8PEM:function(r){if(r.match(/ENCRYPTED/)){throw"pem shall be not ENCRYPTED"}var q=this.getHexFromPEM(r,"PRIVATE KEY");var p=this.getRSAKeyFromPlainPKCS8Hex(q);return p},getRSAKeyFromPlainPKCS8Hex:function(s){var r=ASN1HEX.getPosArrayOfChildren_AtObj(s,0);if(r.length!=3){throw"outer DERSequence shall have 3 elements: "+r.length}var q=ASN1HEX.getHexOfTLV_AtObj(s,r[1]);if(q!="300d06092a864886f70d0101010500"){throw"PKCS8 AlgorithmIdentifier is not rsaEnc: "+q}var q=ASN1HEX.getHexOfTLV_AtObj(s,r[1]);var t=ASN1HEX.getHexOfTLV_AtObj(s,r[2]);var u=ASN1HEX.getHexOfV_AtObj(t,0);var p=new RSAKey();p.readPrivateKeyFromASN1HexString(u);return p},parseHexOfEncryptedPKCS8:function(w){var s={};var r=ASN1HEX.getPosArrayOfChildren_AtObj(w,0);if(r.length!=2){throw"malformed format: SEQUENCE(0).items != 2: "+r.length}s.ciphertext=ASN1HEX.getHexOfV_AtObj(w,r[1]);var y=ASN1HEX.getPosArrayOfChildren_AtObj(w,r[0]);if(y.length!=2){throw"malformed format: SEQUENCE(0.0).items != 2: "+y.length}if(ASN1HEX.getHexOfV_AtObj(w,y[0])!="2a864886f70d01050d"){throw"this only supports pkcs5PBES2"}var p=ASN1HEX.getPosArrayOfChildren_AtObj(w,y[1]);if(y.length!=2){throw"malformed format: SEQUENCE(0.0.1).items != 2: "+p.length}var q=ASN1HEX.getPosArrayOfChildren_AtObj(w,p[1]);if(q.length!=2){throw"malformed format: SEQUENCE(0.0.1.1).items != 2: "+q.length}if(ASN1HEX.getHexOfV_AtObj(w,q[0])!="2a864886f70d0307"){throw"this only supports TripleDES"}s.encryptionSchemeAlg="TripleDES";s.encryptionSchemeIV=ASN1HEX.getHexOfV_AtObj(w,q[1]);var t=ASN1HEX.getPosArrayOfChildren_AtObj(w,p[0]);if(t.length!=2){throw"malformed format: SEQUENCE(0.0.1.0).items != 2: "+t.length}if(ASN1HEX.getHexOfV_AtObj(w,t[0])!="2a864886f70d01050c"){throw"this only supports pkcs5PBKDF2"}var x=ASN1HEX.getPosArrayOfChildren_AtObj(w,t[1]);if(x.length<2){throw"malformed format: SEQUENCE(0.0.1.0.1).items < 2: "+x.length}s.pbkdf2Salt=ASN1HEX.getHexOfV_AtObj(w,x[0]);var u=ASN1HEX.getHexOfV_AtObj(w,x[1]);try{s.pbkdf2Iter=parseInt(u,16)}catch(v){throw"malformed format pbkdf2Iter: "+u}return s},getPBKDF2KeyHexFromParam:function(u,p){var t=CryptoJS.enc.Hex.parse(u.pbkdf2Salt);var q=u.pbkdf2Iter;var s=CryptoJS.PBKDF2(p,t,{keySize:192/32,iterations:q});var r=CryptoJS.enc.Hex.stringify(s);return r},getPlainPKCS8HexFromEncryptedPKCS8PEM:function(x,y){var r=this.getHexFromPEM(x,"ENCRYPTED PRIVATE KEY");var p=this.parseHexOfEncryptedPKCS8(r);var u=KEYUTIL.getPBKDF2KeyHexFromParam(p,y);var v={};v.ciphertext=CryptoJS.enc.Hex.parse(p.ciphertext);var t=CryptoJS.enc.Hex.parse(u);var s=CryptoJS.enc.Hex.parse(p.encryptionSchemeIV);var w=CryptoJS.TripleDES.decrypt(v,t,{iv:s});var q=CryptoJS.enc.Hex.stringify(w);return q},getRSAKeyFromEncryptedPKCS8PEM:function(s,r){var q=this.getPlainPKCS8HexFromEncryptedPKCS8PEM(s,r);var p=this.getRSAKeyFromPlainPKCS8Hex(q);return p},getKeyFromEncryptedPKCS8PEM:function(s,q){var p=this.getPlainPKCS8HexFromEncryptedPKCS8PEM(s,q);var r=this.getKeyFromPlainPrivatePKCS8Hex(p);return r},parsePlainPrivatePKCS8Hex:function(s){var q={};q.algparam=null;if(s.substr(0,2)!="30"){throw"malformed plain PKCS8 private key(code:001)"}var r=ASN1HEX.getPosArrayOfChildren_AtObj(s,0);if(r.length!=3){throw"malformed plain PKCS8 private key(code:002)"}if(s.substr(r[1],2)!="30"){throw"malformed PKCS8 private key(code:003)"}var p=ASN1HEX.getPosArrayOfChildren_AtObj(s,r[1]);if(p.length!=2){throw"malformed PKCS8 private key(code:004)"}if(s.substr(p[0],2)!="06"){throw"malformed PKCS8 private key(code:005)"}q.algoid=ASN1HEX.getHexOfV_AtObj(s,p[0]);if(s.substr(p[1],2)=="06"){q.algparam=ASN1HEX.getHexOfV_AtObj(s,p[1])}if(s.substr(r[2],2)!="04"){throw"malformed PKCS8 private key(code:006)"}q.keyidx=ASN1HEX.getStartPosOfV_AtObj(s,r[2]);return q},getKeyFromPlainPrivatePKCS8PEM:function(q){var p=this.getHexFromPEM(q,"PRIVATE KEY");var r=this.getKeyFromPlainPrivatePKCS8Hex(p);return r},getKeyFromPlainPrivatePKCS8Hex:function(p){var w=this.parsePlainPrivatePKCS8Hex(p);if(w.algoid=="2a864886f70d010101"){this.parsePrivateRawRSAKeyHexAtObj(p,w);var u=w.key;var z=new RSAKey();z.setPrivateEx(u.n,u.e,u.d,u.p,u.q,u.dp,u.dq,u.co);return z}else{if(w.algoid=="2a8648ce3d0201"){this.parsePrivateRawECKeyHexAtObj(p,w);if(KJUR.crypto.OID.oidhex2name[w.algparam]===undefined){throw"KJUR.crypto.OID.oidhex2name undefined: "+w.algparam}var v=KJUR.crypto.OID.oidhex2name[w.algparam];var z=new KJUR.crypto.ECDSA({curve:v});z.setPublicKeyHex(w.pubkey);z.setPrivateKeyHex(w.key);z.isPublic=false;return z}else{if(w.algoid=="2a8648ce380401"){var t=ASN1HEX.getVbyList(p,0,[1,1,0],"02");var s=ASN1HEX.getVbyList(p,0,[1,1,1],"02");var y=ASN1HEX.getVbyList(p,0,[1,1,2],"02");var B=ASN1HEX.getVbyList(p,0,[2,0],"02");var r=new BigInteger(t,16);var q=new BigInteger(s,16);var x=new BigInteger(y,16);var A=new BigInteger(B,16);var z=new KJUR.crypto.DSA();z.setPrivate(r,q,x,null,A);return z}else{throw"unsupported private key algorithm"}}}},getRSAKeyFromPublicPKCS8PEM:function(q){var r=this.getHexFromPEM(q,"PUBLIC KEY");var p=this.getRSAKeyFromPublicPKCS8Hex(r);return p},getKeyFromPublicPKCS8PEM:function(q){var r=this.getHexFromPEM(q,"PUBLIC KEY");var p=this.getKeyFromPublicPKCS8Hex(r);return p},getKeyFromPublicPKCS8Hex:function(q){var p=this.parsePublicPKCS8Hex(q);if(p.algoid=="2a864886f70d010101"){var u=this.parsePublicRawRSAKeyHex(p.key);var r=new RSAKey();r.setPublic(u.n,u.e);return r}else{if(p.algoid=="2a8648ce3d0201"){if(KJUR.crypto.OID.oidhex2name[p.algparam]===undefined){throw"KJUR.crypto.OID.oidhex2name undefined: "+p.algparam}var s=KJUR.crypto.OID.oidhex2name[p.algparam];var r=new KJUR.crypto.ECDSA({curve:s,pub:p.key});return r}else{if(p.algoid=="2a8648ce380401"){var t=p.algparam;var v=ASN1HEX.getHexOfV_AtObj(p.key,0);var r=new KJUR.crypto.DSA();r.setPublic(new BigInteger(t.p,16),new BigInteger(t.q,16),new BigInteger(t.g,16),new BigInteger(v,16));return r}else{throw"unsupported public key algorithm"}}}},parsePublicRawRSAKeyHex:function(r){var p={};if(r.substr(0,2)!="30"){throw"malformed RSA key(code:001)"}var q=ASN1HEX.getPosArrayOfChildren_AtObj(r,0);if(q.length!=2){throw"malformed RSA key(code:002)"}if(r.substr(q[0],2)!="02"){throw"malformed RSA key(code:003)"}p.n=ASN1HEX.getHexOfV_AtObj(r,q[0]);if(r.substr(q[1],2)!="02"){throw"malformed RSA key(code:004)"}p.e=ASN1HEX.getHexOfV_AtObj(r,q[1]);return p},parsePrivateRawRSAKeyHexAtObj:function(q,s){var r=s.keyidx;if(q.substr(r,2)!="30"){throw"malformed RSA private key(code:001)"}var p=ASN1HEX.getPosArrayOfChildren_AtObj(q,r);if(p.length!=9){throw"malformed RSA private key(code:002)"}s.key={};s.key.n=ASN1HEX.getHexOfV_AtObj(q,p[1]);s.key.e=ASN1HEX.getHexOfV_AtObj(q,p[2]);s.key.d=ASN1HEX.getHexOfV_AtObj(q,p[3]);s.key.p=ASN1HEX.getHexOfV_AtObj(q,p[4]);s.key.q=ASN1HEX.getHexOfV_AtObj(q,p[5]);s.key.dp=ASN1HEX.getHexOfV_AtObj(q,p[6]);s.key.dq=ASN1HEX.getHexOfV_AtObj(q,p[7]);s.key.co=ASN1HEX.getHexOfV_AtObj(q,p[8])},parsePrivateRawECKeyHexAtObj:function(p,t){var q=t.keyidx;var r=ASN1HEX.getVbyList(p,q,[1],"04");var s=ASN1HEX.getVbyList(p,q,[2,0],"03").substr(2);t.key=r;t.pubkey=s},parsePublicPKCS8Hex:function(s){var q={};q.algparam=null;var r=ASN1HEX.getPosArrayOfChildren_AtObj(s,0);if(r.length!=2){throw"outer DERSequence shall have 2 elements: "+r.length}var t=r[0];if(s.substr(t,2)!="30"){throw"malformed PKCS8 public key(code:001)"}var p=ASN1HEX.getPosArrayOfChildren_AtObj(s,t);if(p.length!=2){throw"malformed PKCS8 public key(code:002)"}if(s.substr(p[0],2)!="06"){throw"malformed PKCS8 public key(code:003)"}q.algoid=ASN1HEX.getHexOfV_AtObj(s,p[0]);if(s.substr(p[1],2)=="06"){q.algparam=ASN1HEX.getHexOfV_AtObj(s,p[1])}else{if(s.substr(p[1],2)=="30"){q.algparam={};q.algparam.p=ASN1HEX.getVbyList(s,p[1],[0],"02");q.algparam.q=ASN1HEX.getVbyList(s,p[1],[1],"02");q.algparam.g=ASN1HEX.getVbyList(s,p[1],[2],"02")}}if(s.substr(r[1],2)!="03"){throw"malformed PKCS8 public key(code:004)"}q.key=ASN1HEX.getHexOfV_AtObj(s,r[1]).substr(2);return q},getRSAKeyFromPublicPKCS8Hex:function(t){var s=ASN1HEX.getPosArrayOfChildren_AtObj(t,0);if(s.length!=2){throw"outer DERSequence shall have 2 elements: "+s.length}var r=ASN1HEX.getHexOfTLV_AtObj(t,s[0]);if(r!="300d06092a864886f70d0101010500"){throw"PKCS8 AlgorithmId is not rsaEncryption"}if(t.substr(s[1],2)!="03"){throw"PKCS8 Public Key is not BITSTRING encapslated."}var v=ASN1HEX.getStartPosOfV_AtObj(t,s[1])+2;if(t.substr(v,2)!="30"){throw"PKCS8 Public Key is not SEQUENCE."}var p=ASN1HEX.getPosArrayOfChildren_AtObj(t,v);if(p.length!=2){throw"inner DERSequence shall have 2 elements: "+p.length}if(t.substr(p[0],2)!="02"){throw"N is not ASN.1 INTEGER"}if(t.substr(p[1],2)!="02"){throw"E is not ASN.1 INTEGER"}var w=ASN1HEX.getHexOfV_AtObj(t,p[0]);var u=ASN1HEX.getHexOfV_AtObj(t,p[1]);var q=new RSAKey();q.setPublic(w,u);return q},}}();KEYUTIL.getKey=function(f,e,h){if(typeof RSAKey!="undefined"&&f instanceof RSAKey){return f}if(typeof KJUR.crypto.ECDSA!="undefined"&&f instanceof KJUR.crypto.ECDSA){return f}if(typeof KJUR.crypto.DSA!="undefined"&&f instanceof KJUR.crypto.DSA){return f}if(f.curve!==undefined&&f.xy!==undefined&&f.d===undefined){return new KJUR.crypto.ECDSA({pub:f.xy,curve:f.curve})}if(f.curve!==undefined&&f.d!==undefined){return new KJUR.crypto.ECDSA({prv:f.d,curve:f.curve})}if(f.kty===undefined&&f.n!==undefined&&f.e!==undefined&&f.d===undefined){var w=new RSAKey();w.setPublic(f.n,f.e);return w}if(f.kty===undefined&&f.n!==undefined&&f.e!==undefined&&f.d!==undefined&&f.p!==undefined&&f.q!==undefined&&f.dp!==undefined&&f.dq!==undefined&&f.co!==undefined&&f.qi===undefined){var w=new RSAKey();w.setPrivateEx(f.n,f.e,f.d,f.p,f.q,f.dp,f.dq,f.co);return w}if(f.kty===undefined&&f.n!==undefined&&f.e!==undefined&&f.d!==undefined&&f.p===undefined){var w=new RSAKey();w.setPrivate(f.n,f.e,f.d);return w}if(f.p!==undefined&&f.q!==undefined&&f.g!==undefined&&f.y!==undefined&&f.x===undefined){var w=new KJUR.crypto.DSA();w.setPublic(f.p,f.q,f.g,f.y);return w}if(f.p!==undefined&&f.q!==undefined&&f.g!==undefined&&f.y!==undefined&&f.x!==undefined){var w=new KJUR.crypto.DSA();w.setPrivate(f.p,f.q,f.g,f.y,f.x);return w}if(f.kty==="RSA"&&f.n!==undefined&&f.e!==undefined&&f.d===undefined){var w=new RSAKey();w.setPublic(b64utohex(f.n),b64utohex(f.e));return w}if(f.kty==="RSA"&&f.n!==undefined&&f.e!==undefined&&f.d!==undefined&&f.p!==undefined&&f.q!==undefined&&f.dp!==undefined&&f.dq!==undefined&&f.qi!==undefined){var w=new RSAKey();w.setPrivateEx(b64utohex(f.n),b64utohex(f.e),b64utohex(f.d),b64utohex(f.p),b64utohex(f.q),b64utohex(f.dp),b64utohex(f.dq),b64utohex(f.qi));return w}if(f.kty==="RSA"&&f.n!==undefined&&f.e!==undefined&&f.d!==undefined){var w=new RSAKey();w.setPrivate(b64utohex(f.n),b64utohex(f.e),b64utohex(f.d));return w}if(f.kty==="EC"&&f.crv!==undefined&&f.x!==undefined&&f.y!==undefined&&f.d===undefined){var d=new KJUR.crypto.ECDSA({curve:f.crv});var l=d.ecparams.keylen/4;var r=("0000000000"+b64utohex(f.x)).slice(-l);var n=("0000000000"+b64utohex(f.y)).slice(-l);var m="04"+r+n;d.setPublicKeyHex(m);return d}if(f.kty==="EC"&&f.crv!==undefined&&f.x!==undefined&&f.y!==undefined&&f.d!==undefined){var d=new KJUR.crypto.ECDSA({curve:f.crv});var l=d.ecparams.keylen/4;var r=("0000000000"+b64utohex(f.x)).slice(-l);var n=("0000000000"+b64utohex(f.y)).slice(-l);var m="04"+r+n;var a=("0000000000"+b64utohex(f.d)).slice(-l);d.setPublicKeyHex(m);d.setPrivateKeyHex(a);return d}if(f.indexOf("-END CERTIFICATE-",0)!=-1||f.indexOf("-END X509 CERTIFICATE-",0)!=-1||f.indexOf("-END TRUSTED CERTIFICATE-",0)!=-1){return X509.getPublicKeyFromCertPEM(f)}if(h==="pkcs8pub"){return KEYUTIL.getKeyFromPublicPKCS8Hex(f)}if(f.indexOf("-END PUBLIC KEY-")!=-1){return KEYUTIL.getKeyFromPublicPKCS8PEM(f)}if(h==="pkcs5prv"){var w=new RSAKey();w.readPrivateKeyFromASN1HexString(f);return w}if(h==="pkcs5prv"){var w=new RSAKey();w.readPrivateKeyFromASN1HexString(f);return w}if(f.indexOf("-END RSA PRIVATE KEY-")!=-1&&f.indexOf("4,ENCRYPTED")==-1){var i=KEYUTIL.getHexFromPEM(f,"RSA PRIVATE KEY");return KEYUTIL.getKey(i,null,"pkcs5prv")}if(f.indexOf("-END DSA PRIVATE KEY-")!=-1&&f.indexOf("4,ENCRYPTED")==-1){var u=this.getHexFromPEM(f,"DSA PRIVATE KEY");var t=ASN1HEX.getVbyList(u,0,[1],"02");var s=ASN1HEX.getVbyList(u,0,[2],"02");var v=ASN1HEX.getVbyList(u,0,[3],"02");var j=ASN1HEX.getVbyList(u,0,[4],"02");var k=ASN1HEX.getVbyList(u,0,[5],"02");var w=new KJUR.crypto.DSA();w.setPrivate(new BigInteger(t,16),new BigInteger(s,16),new BigInteger(v,16),new BigInteger(j,16),new BigInteger(k,16));return w}if(f.indexOf("-END PRIVATE KEY-")!=-1){return KEYUTIL.getKeyFromPlainPrivatePKCS8PEM(f)}if(f.indexOf("-END RSA PRIVATE KEY-")!=-1&&f.indexOf("4,ENCRYPTED")!=-1){return KEYUTIL.getRSAKeyFromEncryptedPKCS5PEM(f,e)}if(f.indexOf("-END EC PRIVATE KEY-")!=-1&&f.indexOf("4,ENCRYPTED")!=-1){var u=KEYUTIL.getDecryptedKeyHex(f,e);var w=ASN1HEX.getVbyList(u,0,[1],"04");var c=ASN1HEX.getVbyList(u,0,[2,0],"06");var o=ASN1HEX.getVbyList(u,0,[3,0],"03").substr(2);var b="";if(KJUR.crypto.OID.oidhex2name[c]!==undefined){b=KJUR.crypto.OID.oidhex2name[c]}else{throw"undefined OID(hex) in KJUR.crypto.OID: "+c}var d=new KJUR.crypto.ECDSA({name:b});d.setPublicKeyHex(o);d.setPrivateKeyHex(w);d.isPublic=false;return d}if(f.indexOf("-END DSA PRIVATE KEY-")!=-1&&f.indexOf("4,ENCRYPTED")!=-1){var u=KEYUTIL.getDecryptedKeyHex(f,e);var t=ASN1HEX.getVbyList(u,0,[1],"02");var s=ASN1HEX.getVbyList(u,0,[2],"02");var v=ASN1HEX.getVbyList(u,0,[3],"02");var j=ASN1HEX.getVbyList(u,0,[4],"02");var k=ASN1HEX.getVbyList(u,0,[5],"02");var w=new KJUR.crypto.DSA();w.setPrivate(new BigInteger(t,16),new BigInteger(s,16),new BigInteger(v,16),new BigInteger(j,16),new BigInteger(k,16));return w}if(f.indexOf("-END ENCRYPTED PRIVATE KEY-")!=-1){return KEYUTIL.getKeyFromEncryptedPKCS8PEM(f,e)}throw"not supported argument"};KEYUTIL.generateKeypair=function(a,c){if(a=="RSA"){var b=c;var h=new RSAKey();h.generate(b,"10001");h.isPrivate=true;h.isPublic=true;var f=new RSAKey();var e=h.n.toString(16);var i=h.e.toString(16);f.setPublic(e,i);f.isPrivate=false;f.isPublic=true;var k={};k.prvKeyObj=h;k.pubKeyObj=f;return k}else{if(a=="EC"){var d=c;var g=new KJUR.crypto.ECDSA({curve:d});var j=g.generateKeyPairHex();var h=new KJUR.crypto.ECDSA({curve:d});h.setPublicKeyHex(j.ecpubhex);h.setPrivateKeyHex(j.ecprvhex);h.isPrivate=true;h.isPublic=false;var f=new KJUR.crypto.ECDSA({curve:d});f.setPublicKeyHex(j.ecpubhex);f.isPrivate=false;f.isPublic=true;var k={};k.prvKeyObj=h;k.pubKeyObj=f;return k}else{throw"unknown algorithm: "+a}}};KEYUTIL.getPEM=function(a,r,o,g,j){var v=KJUR.asn1;var u=KJUR.crypto;function p(s){var w=KJUR.asn1.ASN1Util.newObject({seq:[{"int":0},{"int":{bigint:s.n}},{"int":s.e},{"int":{bigint:s.d}},{"int":{bigint:s.p}},{"int":{bigint:s.q}},{"int":{bigint:s.dmp1}},{"int":{bigint:s.dmq1}},{"int":{bigint:s.coeff}}]});return w}function q(w){var s=KJUR.asn1.ASN1Util.newObject({seq:[{"int":1},{octstr:{hex:w.prvKeyHex}},{tag:["a0",true,{oid:{name:w.curveName}}]},{tag:["a1",true,{bitstr:{hex:"00"+w.pubKeyHex}}]}]});return s}function n(s){var w=KJUR.asn1.ASN1Util.newObject({seq:[{"int":0},{"int":{bigint:s.p}},{"int":{bigint:s.q}},{"int":{bigint:s.g}},{"int":{bigint:s.y}},{"int":{bigint:s.x}}]});return w}if(((typeof RSAKey!="undefined"&&a instanceof RSAKey)||(typeof u.DSA!="undefined"&&a instanceof u.DSA)||(typeof u.ECDSA!="undefined"&&a instanceof u.ECDSA))&&a.isPublic==true&&(r===undefined||r=="PKCS8PUB")){var t=new KJUR.asn1.x509.SubjectPublicKeyInfo(a);var m=t.getEncodedHex();return v.ASN1Util.getPEMStringFromHex(m,"PUBLIC KEY")}if(r=="PKCS1PRV"&&typeof RSAKey!="undefined"&&a instanceof RSAKey&&(o===undefined||o==null)&&a.isPrivate==true){var t=p(a);var m=t.getEncodedHex();return v.ASN1Util.getPEMStringFromHex(m,"RSA PRIVATE KEY")}if(r=="PKCS1PRV"&&typeof RSAKey!="undefined"&&a instanceof KJUR.crypto.ECDSA&&(o===undefined||o==null)&&a.isPrivate==true){var f=new KJUR.asn1.DERObjectIdentifier({name:a.curveName});var l=f.getEncodedHex();var e=q(a);var k=e.getEncodedHex();var i="";i+=v.ASN1Util.getPEMStringFromHex(l,"EC PARAMETERS");i+=v.ASN1Util.getPEMStringFromHex(k,"EC PRIVATE KEY");return i}if(r=="PKCS1PRV"&&typeof KJUR.crypto.DSA!="undefined"&&a instanceof KJUR.crypto.DSA&&(o===undefined||o==null)&&a.isPrivate==true){var t=n(a);var m=t.getEncodedHex();return v.ASN1Util.getPEMStringFromHex(m,"DSA PRIVATE KEY")}if(r=="PKCS5PRV"&&typeof RSAKey!="undefined"&&a instanceof RSAKey&&(o!==undefined&&o!=null)&&a.isPrivate==true){var t=p(a);var m=t.getEncodedHex();if(g===undefined){g="DES-EDE3-CBC"}return this.getEncryptedPKCS5PEMFromPrvKeyHex("RSA",m,o,g)}if(r=="PKCS5PRV"&&typeof KJUR.crypto.ECDSA!="undefined"&&a instanceof KJUR.crypto.ECDSA&&(o!==undefined&&o!=null)&&a.isPrivate==true){var t=q(a);var m=t.getEncodedHex();if(g===undefined){g="DES-EDE3-CBC"}return this.getEncryptedPKCS5PEMFromPrvKeyHex("EC",m,o,g)}if(r=="PKCS5PRV"&&typeof KJUR.crypto.DSA!="undefined"&&a instanceof KJUR.crypto.DSA&&(o!==undefined&&o!=null)&&a.isPrivate==true){var t=n(a);var m=t.getEncodedHex();if(g===undefined){g="DES-EDE3-CBC"}return this.getEncryptedPKCS5PEMFromPrvKeyHex("DSA",m,o,g)}var h=function(w,s){var y=b(w,s);var x=new KJUR.asn1.ASN1Util.newObject({seq:[{seq:[{oid:{name:"pkcs5PBES2"}},{seq:[{seq:[{oid:{name:"pkcs5PBKDF2"}},{seq:[{octstr:{hex:y.pbkdf2Salt}},{"int":y.pbkdf2Iter}]}]},{seq:[{oid:{name:"des-EDE3-CBC"}},{octstr:{hex:y.encryptionSchemeIV}}]}]}]},{octstr:{hex:y.ciphertext}}]});return x.getEncodedHex()};var b=function(D,E){var x=100;var C=CryptoJS.lib.WordArray.random(8);var B="DES-EDE3-CBC";var s=CryptoJS.lib.WordArray.random(8);var y=CryptoJS.PBKDF2(E,C,{keySize:192/32,iterations:x});var z=CryptoJS.enc.Hex.parse(D);var A=CryptoJS.TripleDES.encrypt(z,y,{iv:s})+"";var w={};w.ciphertext=A;w.pbkdf2Salt=CryptoJS.enc.Hex.stringify(C);w.pbkdf2Iter=x;w.encryptionSchemeAlg=B;w.encryptionSchemeIV=CryptoJS.enc.Hex.stringify(s);return w};if(r=="PKCS8PRV"&&typeof RSAKey!="undefined"&&a instanceof RSAKey&&a.isPrivate==true){var d=p(a);var c=d.getEncodedHex();var t=KJUR.asn1.ASN1Util.newObject({seq:[{"int":0},{seq:[{oid:{name:"rsaEncryption"}},{"null":true}]},{octstr:{hex:c}}]});var m=t.getEncodedHex();if(o===undefined||o==null){return v.ASN1Util.getPEMStringFromHex(m,"PRIVATE KEY")}else{var k=h(m,o);return v.ASN1Util.getPEMStringFromHex(k,"ENCRYPTED PRIVATE KEY")}}if(r=="PKCS8PRV"&&typeof KJUR.crypto.ECDSA!="undefined"&&a instanceof KJUR.crypto.ECDSA&&a.isPrivate==true){var d=new KJUR.asn1.ASN1Util.newObject({seq:[{"int":1},{octstr:{hex:a.prvKeyHex}},{tag:["a1",true,{bitstr:{hex:"00"+a.pubKeyHex}}]}]});var c=d.getEncodedHex();var t=KJUR.asn1.ASN1Util.newObject({seq:[{"int":0},{seq:[{oid:{name:"ecPublicKey"}},{oid:{name:a.curveName}}]},{octstr:{hex:c}}]});var m=t.getEncodedHex();if(o===undefined||o==null){return v.ASN1Util.getPEMStringFromHex(m,"PRIVATE KEY")}else{var k=h(m,o);return v.ASN1Util.getPEMStringFromHex(k,"ENCRYPTED PRIVATE KEY")}}if(r=="PKCS8PRV"&&typeof KJUR.crypto.DSA!="undefined"&&a instanceof KJUR.crypto.DSA&&a.isPrivate==true){var d=new KJUR.asn1.DERInteger({bigint:a.x});var c=d.getEncodedHex();var t=KJUR.asn1.ASN1Util.newObject({seq:[{"int":0},{seq:[{oid:{name:"dsa"}},{seq:[{"int":{bigint:a.p}},{"int":{bigint:a.q}},{"int":{bigint:a.g}}]}]},{octstr:{hex:c}}]});var m=t.getEncodedHex();if(o===undefined||o==null){return v.ASN1Util.getPEMStringFromHex(m,"PRIVATE KEY")}else{var k=h(m,o);return v.ASN1Util.getPEMStringFromHex(k,"ENCRYPTED PRIVATE KEY")}}throw"unsupported object nor format"};KEYUTIL.getKeyFromCSRPEM=function(b){var a=KEYUTIL.getHexFromPEM(b,"CERTIFICATE REQUEST");var c=KEYUTIL.getKeyFromCSRHex(a);return c};KEYUTIL.getKeyFromCSRHex=function(a){var c=KEYUTIL.parseCSRHex(a);var b=KEYUTIL.getKey(c.p8pubkeyhex,null,"pkcs8pub");return b};KEYUTIL.parseCSRHex=function(c){var b={};var e=c;if(e.substr(0,2)!="30"){throw"malformed CSR(code:001)"}var d=ASN1HEX.getPosArrayOfChildren_AtObj(e,0);if(d.length<1){throw"malformed CSR(code:002)"}if(e.substr(d[0],2)!="30"){throw"malformed CSR(code:003)"}var a=ASN1HEX.getPosArrayOfChildren_AtObj(e,d[0]);if(a.length<3){throw"malformed CSR(code:004)"}b.p8pubkeyhex=ASN1HEX.getHexOfTLV_AtObj(e,a[2]);return b};KEYUTIL.getJWKFromKey=function(d){var b={};if(d instanceof RSAKey&&d.isPrivate){b.kty="RSA";b.n=hextob64u(d.n.toString(16));b.e=hextob64u(d.e.toString(16));b.d=hextob64u(d.d.toString(16));b.p=hextob64u(d.p.toString(16));b.q=hextob64u(d.q.toString(16));b.dp=hextob64u(d.dmp1.toString(16));b.dq=hextob64u(d.dmq1.toString(16));b.qi=hextob64u(d.coeff.toString(16));return b}else{if(d instanceof RSAKey&&d.isPublic){b.kty="RSA";b.n=hextob64u(d.n.toString(16));b.e=hextob64u(d.e.toString(16));return b}else{if(d instanceof KJUR.crypto.ECDSA&&d.isPrivate){var a=d.getShortNISTPCurveName();if(a!=="P-256"&&a!=="P-384"){throw"unsupported curve name for JWT: "+a}var c=d.getPublicKeyXYHex();b.kty="EC";b.crv=a;b.x=hextob64u(c.x);b.y=hextob64u(c.y);b.d=hextob64u(d.prvKeyHex);return b}else{if(d instanceof KJUR.crypto.ECDSA&&d.isPublic){var a=d.getShortNISTPCurveName();if(a!=="P-256"&&a!=="P-384"){throw"unsupported curve name for JWT: "+a}var c=d.getPublicKeyXYHex();b.kty="EC";b.crv=a;b.x=hextob64u(c.x);b.y=hextob64u(c.y);return b}}}}throw"not supported key object"};
 
 /*! (c) Tom Wu | http://www-cs-students.stanford.edu/~tjw/jsbn/
  */
@@ -9284,7 +12126,6 @@ ECPointFp.prototype.validate = function () {
 
   return true;
 };
-
 
 /*! ecdsa-modified-1.0.4.js (c) Stephan Thomas, Kenji Urushima | github.com/bitcoinjs/bitcoinjs-lib/blob/master/LICENSE
  */
@@ -10270,7 +13111,6 @@ KJUR.crypto.SM3withSM2 = function(params) {
     }
 };
 
-
 /*! ecparam-1.0.0.js (c) 2013 Kenji Urushima | kjur.github.com/jsrsasign/license
  */
 /*
@@ -10530,9 +13370,11 @@ KJUR.crypto.ECParameterDB.regist(
   "32C4AE2C1F1981195F9904466A39C9948FE30BBFF2660BE1715A4589334C74C7", // gx
   "BC3736A2F4F6779C59BDCEE36B692153D0A9877CC62A474002DF32E52139F0A0", // gy
   ["sm2", "SM2"]); // alias
+/*! base64x-1.1.8 (c) 2012-2016 Kenji Urushima | kjur.github.com/jsrsasign/license
+ */
+if(typeof KJUR=="undefined"||!KJUR){KJUR={}}if(typeof KJUR.lang=="undefined"||!KJUR.lang){KJUR.lang={}}KJUR.lang.String=function(){};function Base64x(){}function stoBA(d){var b=new Array();for(var c=0;c<d.length;c++){b[c]=d.charCodeAt(c)}return b}function BAtos(b){var d="";for(var c=0;c<b.length;c++){d=d+String.fromCharCode(b[c])}return d}function BAtohex(b){var e="";for(var d=0;d<b.length;d++){var c=b[d].toString(16);if(c.length==1){c="0"+c}e=e+c}return e}function stohex(a){return BAtohex(stoBA(a))}function stob64(a){return hex2b64(stohex(a))}function stob64u(a){return b64tob64u(hex2b64(stohex(a)))}function b64utos(a){return BAtos(b64toBA(b64utob64(a)))}function b64tob64u(a){a=a.replace(/\=/g,"");a=a.replace(/\+/g,"-");a=a.replace(/\//g,"_");return a}function b64utob64(a){if(a.length%4==2){a=a+"=="}else{if(a.length%4==3){a=a+"="}}a=a.replace(/-/g,"+");a=a.replace(/_/g,"/");return a}function hextob64u(a){if(a.length%2==1){a="0"+a}return b64tob64u(hex2b64(a))}function b64utohex(a){return b64tohex(b64utob64(a))}var utf8tob64u,b64utoutf8;if(typeof Buffer==="function"){utf8tob64u=function(a){return b64tob64u(new Buffer(a,"utf8").toString("base64"))};b64utoutf8=function(a){return new Buffer(b64utob64(a),"base64").toString("utf8")}}else{utf8tob64u=function(a){return hextob64u(uricmptohex(encodeURIComponentAll(a)))};b64utoutf8=function(a){return decodeURIComponent(hextouricmp(b64utohex(a)))}}function utf8tob64(a){return hex2b64(uricmptohex(encodeURIComponentAll(a)))}function b64toutf8(a){return decodeURIComponent(hextouricmp(b64tohex(a)))}function utf8tohex(a){return uricmptohex(encodeURIComponentAll(a))}function hextoutf8(a){return decodeURIComponent(hextouricmp(a))}function hextorstr(c){var b="";for(var a=0;a<c.length-1;a+=2){b+=String.fromCharCode(parseInt(c.substr(a,2),16))}return b}function rstrtohex(c){var a="";for(var b=0;b<c.length;b++){a+=("0"+c.charCodeAt(b).toString(16)).slice(-2)}return a}function hextob64(a){return hex2b64(a)}function hextob64nl(b){var a=hextob64(b);var c=a.replace(/(.{64})/g,"$1\r\n");c=c.replace(/\r\n$/,"");return c}function b64nltohex(b){var a=b.replace(/[^0-9A-Za-z\/+=]*/g,"");var c=b64tohex(a);return c}function hextoArrayBuffer(d){if(d.length%2!=0){throw"input is not even length"}if(d.match(/^[0-9A-Fa-f]+$/)==null){throw"input is not hexadecimal"}var b=new ArrayBuffer(d.length/2);var a=new DataView(b);for(var c=0;c<d.length/2;c++){a.setUint8(c,parseInt(d.substr(c*2,2),16))}return b}function ArrayBuffertohex(b){var d="";var a=new DataView(b);for(var c=0;c<b.byteLength;c++){d+=("00"+a.getUint8(c).toString(16)).slice(-2)}return d}function uricmptohex(a){return a.replace(/%/g,"")}function hextouricmp(a){return a.replace(/(..)/g,"%$1")}function encodeURIComponentAll(a){var d=encodeURIComponent(a);var b="";for(var c=0;c<d.length;c++){if(d[c]=="%"){b=b+d.substr(c,3);c=c+2}else{b=b+"%"+stohex(d[c])}}return b}function newline_toUnix(a){a=a.replace(/\r\n/mg,"\n");return a}function newline_toDos(a){a=a.replace(/\r\n/mg,"\n");a=a.replace(/\n/mg,"\r\n");return a}KJUR.lang.String.isInteger=function(a){if(a.match(/^[0-9]+$/)){return true}else{if(a.match(/^-[0-9]+$/)){return true}else{return false}}};KJUR.lang.String.isHex=function(a){if(a.length%2==0&&(a.match(/^[0-9a-f]+$/)||a.match(/^[0-9A-F]+$/))){return true}else{return false}};KJUR.lang.String.isBase64=function(a){a=a.replace(/\s+/g,"");if(a.match(/^[0-9A-Za-z+\/]+={0,3}$/)&&a.length%4==0){return true}else{return false}};KJUR.lang.String.isBase64URL=function(a){if(a.match(/[+/=]/)){return false}a=b64utob64(a);return KJUR.lang.String.isBase64(a)};KJUR.lang.String.isIntegerArray=function(a){a=a.replace(/\s+/g,"");if(a.match(/^\[[0-9,]+\]$/)){return true}else{return false}};function intarystrtohex(b){b=b.replace(/^\s*\[\s*/,"");b=b.replace(/\s*\]\s*$/,"");b=b.replace(/\s*/g,"");try{var c=b.split(/,/).map(function(g,e,h){var f=parseInt(g);if(f<0||255<f){throw"integer not in range 0-255"}var d=("00"+f.toString(16)).slice(-2);return d}).join("");return c}catch(a){throw"malformed integer array string: "+a}}var strdiffidx=function(c,a){var d=c.length;if(c.length>a.length){d=a.length}for(var b=0;b<d;b++){if(c.charCodeAt(b)!=a.charCodeAt(b)){return b}}if(c.length!=a.length){return d}return -1};
 
 function SM2Cipher(cipherMode){this.ct=1;this.p2=null;this.sm3keybase=null;this.sm3c3=null;this.key=new Array(32);this.keyOff=0;if(typeof(cipherMode)!='undefined'){this.cipherMode=cipherMode}else{this.cipherMode=SM2CipherMode.C1C3C2}}SM2Cipher.prototype={Reset:function(){this.sm3keybase=new SM3Digest();this.sm3c3=new SM3Digest();var xWords=this.GetWords(this.p2.getX().toBigInteger().toRadix(16));var yWords=this.GetWords(this.p2.getY().toBigInteger().toRadix(16));this.sm3keybase.BlockUpdate(xWords,0,xWords.length);this.sm3c3.BlockUpdate(xWords,0,xWords.length);this.sm3keybase.BlockUpdate(yWords,0,yWords.length);this.ct=1;this.NextKey()},NextKey:function(){var sm3keycur=new SM3Digest(this.sm3keybase);sm3keycur.Update((this.ct>>24&0x00ff));sm3keycur.Update((this.ct>>16&0x00ff));sm3keycur.Update((this.ct>>8&0x00ff));sm3keycur.Update((this.ct&0x00ff));sm3keycur.DoFinal(this.key,0);this.keyOff=0;this.ct++},InitEncipher:function(userKey){var k=null;var c1=null;var ec=new KJUR.crypto.ECDSA({"curve":"sm2"});var keypair=ec.generateKeyPairHex();k=new BigInteger(keypair.ecprvhex,16);var pubkeyHex=keypair.ecpubhex;c1=ECPointFp.decodeFromHex(ec.ecparams['curve'],pubkeyHex);this.p2=userKey.multiply(k);this.Reset();return c1},EncryptBlock:function(data){this.sm3c3.BlockUpdate(data,0,data.length);for(var i=0;i<data.length;i++){if(this.keyOff==this.key.length){this.NextKey()}data[i]^=this.key[this.keyOff++]}},InitDecipher:function(userD,c1){this.p2=c1.multiply(userD);this.Reset()},DecryptBlock:function(data){for(var i=0;i<data.length;i++){if(this.keyOff==this.key.length){this.NextKey()}data[i]^=this.key[this.keyOff++]}this.sm3c3.BlockUpdate(data,0,data.length)},Dofinal:function(c3){var yWords=this.GetWords(this.p2.getY().toBigInteger().toRadix(16));this.sm3c3.BlockUpdate(yWords,0,yWords.length);this.sm3c3.DoFinal(c3,0);this.Reset()},Encrypt:function(pubKey,plaintext){var data=new Array(plaintext.length);Array.Copy(plaintext,0,data,0,plaintext.length);var c1=this.InitEncipher(pubKey);this.EncryptBlock(data);var c3=new Array(32);this.Dofinal(c3);var hexString=c1.getX().toBigInteger().toRadix(16)+c1.getY().toBigInteger().toRadix(16)+this.GetHex(data).toString()+this.GetHex(c3).toString();if(this.cipherMode==SM2CipherMode.C1C3C2){hexString=c1.getX().toBigInteger().toRadix(16)+c1.getY().toBigInteger().toRadix(16)+this.GetHex(c3).toString()+this.GetHex(data).toString()}return hexString},GetWords:function(hexStr){var words=[];var hexStrLength=hexStr.length;for(var i=0;i<hexStrLength;i+=2){words[words.length]=parseInt(hexStr.substr(i,2),16)}return words},GetHex:function(arr){var words=[];var j=0;for(var i=0;i<arr.length*2;i+=2){words[i>>>3]|=parseInt(arr[j])<<(24-(i%8)*4);j++}var wordArray=new CryptoJS.lib.WordArray.init(words,arr.length);return wordArray},Decrypt:function(privateKey,ciphertext){var hexString=ciphertext;var c1X=hexString.substr(0,64);var c1Y=hexString.substr(0+c1X.length,64);var encrypData=hexString.substr(c1X.length+c1Y.length,hexString.length-c1X.length-c1Y.length-64);var c3=hexString.substr(hexString.length-64);if(this.cipherMode==SM2CipherMode.C1C3C2){c3=hexString.substr(c1X.length+c1Y.length,64);encrypData=hexString.substr(c1X.length+c1Y.length+64)}var data=this.GetWords(encrypData);var c1=this.CreatePoint(c1X,c1Y);this.InitDecipher(privateKey,c1);this.DecryptBlock(data);var c3_=new Array(32);this.Dofinal(c3_);var isDecrypt=this.GetHex(c3_).toString()==c3;if(isDecrypt){var wordArray=this.GetHex(data);var decryptData=CryptoJS.enc.Utf8.stringify(wordArray);return decryptData}else{return''}},CreatePoint:function(x,y){var ec=new KJUR.crypto.ECDSA({"curve":"sm2"});var ecc_curve=ec.ecparams['curve'];var pubkeyHex='04'+x+y;var point=ECPointFp.decodeFromHex(ec.ecparams['curve'],pubkeyHex);return point}};window.SM2CipherMode={C1C2C3:'0',C1C3C2:'1'};
-
 
 exports.SecureRandom = SecureRandom;
 exports.rng_seed_time = rng_seed_time;
@@ -10593,3 +13435,35 @@ exports.asn1 = KJUR.asn1;
 exports.jws = KJUR.jws;
 exports.lang = KJUR.lang;
 exports.SM2Cipher = SM2Cipher;
+
+function SM2Encrypt(publickey, msg, cipherMode) {
+    var msgData = CryptoJS.enc.Utf8.parse(msg);
+
+    var pubkeyHex = publickey;
+    if (pubkeyHex.length > 64 * 2) {
+        pubkeyHex = pubkeyHex.substr(pubkeyHex.length - 64 * 2);
+    }
+
+    var xHex = pubkeyHex.substr(0, 64);
+    var yHex = pubkeyHex.substr(64);
+
+
+    var cipher = new SM2Cipher(cipherMode);
+    var userKey = cipher.CreatePoint(xHex, yHex);
+
+    msgData = cipher.GetWords(msgData.toString());
+
+    var encryptData = cipher.Encrypt(userKey, msgData);
+    return encryptData;
+}
+
+function SM2Decrypt(privateKey, encrypted, cipherMode) {
+    var privKey = new BigInteger(privateKey, 16);
+
+        
+    var cipher = new SM2Cipher(cipherMode);
+    var data = cipher.Decrypt(privKey, encrypted);
+    return data;
+}
+exports.SM2Encrypt = SM2Encrypt;
+exports.SM2Decrypt = SM2Decrypt;
