@@ -13,17 +13,7 @@
 <script src="build/index.js"></script>
 <script language="JavaScript" type="text/javascript">
 
-function rotateLeft1(x, n){
- return ((x << n) | (x >>> (32 - n)));
-}
 function doGenerate() {
-  var testaa = 2147;
-  // var testaa = (new BigInteger());
-  // testaa.fromInt(2147483647);
-  // var testab = testaa.shiftLeft(11);
-  console.log((255<<24));
-  var testab = rotateLeft1(testaa, 11);
-  console.log(testab);
   var f1 = document.form1;
   var curve = f1.curve1.value;
   var ec = new KJUR.crypto.ECDSA({"curve": curve});
@@ -35,28 +25,14 @@ function doGenerate() {
 
 
 
-function Person () {
-  var name = 1;
-}
-Person.prototype.printName = function () {
-  console.log(this.name);
-}
-
 function doCrypt() {
     var f1 = document.form1;
     
     var curve = f1.curve1.value;
     var msg = f1.msg1.value;
-    var result = [];
-    var encryptData;
     var pubkeyHex = f1.pubkey1.value;
-    for(var i=0; i<12; i++){
-      encryptData = sm2Encrypt(msg, pubkeyHex);
-      result.push(encryptData);
-      doDecrypt(encryptData);
-    }
+    var encryptData = sm2Encrypt(msg, pubkeyHex);
     f1.sigval1.value = encryptData;
-    console.log(JSON.stringify(result));
 }
 function doDecrypt(encrypData) {
     var f1 = document.form1;
@@ -67,87 +43,7 @@ function doDecrypt(encrypData) {
   
     console.log(data);
 }
-// function doCrypt() {
 
-//     var f1 = document.form1;
-    
-//     var curve = f1.curve1.value;
-//     var msg = f1.msg1.value;
-//     //msg = stob64(msg);
-//     var result = [];
-//     var encryptData;
-//     for(var i=0; i<2; i++){
-//       var msgData = CryptoJS.enc.Utf8.parse(msg);
-
-//       var pubkeyHex = f1.pubkey1.value;
-//       if (pubkeyHex.length > 64 * 2) {
-//           pubkeyHex = pubkeyHex.substr(pubkeyHex.length - 64 * 2);
-//       }
-
-//       var xHex = pubkeyHex.substr(0, 64);
-//       var yHex = pubkeyHex.substr(64);
-
-//       var cipherMode = f1.cipherMode.value;
-
-//       var cipher = new SM2Cipher(parseInt(cipherMode));
-//       var userKey = cipher.CreatePoint(xHex, yHex);
-
-//       msgData = cipher.GetWords(msgData.toString());
-
-//       encryptData = cipher.Encrypt(userKey, msgData);
-//       doDecrypt(encryptData);
-//       result.push('04'+encryptData);
-//       console.log(i+'-------------');
-//     }
-//     console.log(JSON.stringify(result));
-//     f1.sigval1.value = encryptData;
-// }
-
-// function doDecrypt(encrypData) {
-//     var f1 = document.form1;
-//     var prvkey = f1.prvkey1.value;
-//     encrypData = encrypData||f1.sigval1.value;
-    
-//     var privateKey = new BigInteger(prvkey, 16);
-  
-//   var cipherMode = f1.cipherMode.value;
-        
-//     var cipher = new SM2Cipher(parseInt(cipherMode));
-//     var data = cipher.Decrypt(privateKey, encrypData);
-  
-//     console.log(data);
-// }
-
-// function certCrypt() {
-//     var certData = document.getElementById('txtCertData').value;
-//     if( certData != "") {
-//       var key = X509.getPublicKeyFromCertPEM(certData);
-//     document.getElementById('txtPubKey').value = key.pubKeyHex;
-//     }
-
-//     var pubkey = document.getElementById('txtPubKey').value.replace(/\s/g,'');
-  
-  
-//     var pubkeyHex = pubkey;
-//     if (pubkeyHex.length > 64 * 2) {
-//         pubkeyHex = pubkeyHex.substr(pubkeyHex.length - 64 * 2);
-//     }
-
-//     var xHex = pubkeyHex.substr(0, 64);
-//     var yHex = pubkeyHex.substr(64);
-  
-//   var cipherMode = document.getElementById('cipherMode').value;
-    
-//     var cipher = new SM2Cipher(cipherMode);
-//     var userKey = cipher.CreatePoint(xHex, yHex);
-  
-//   var msg = document.getElementById('txtRawData').value;
-//   var msgData = CryptoJS.enc.Utf8.parse(msg);
-//   msgData = cipher.GetWords(msgData.toString());
-  
-//     var encryptData = cipher.Encrypt(userKey, msgData);
-//     document.getElementById('txtCryptData').value = hex2b64(encryptData);
-// }
 </script>
   </head>
 
@@ -199,7 +95,7 @@ Crypt Options:
 </select><br/>
 
 Message string to be Crypted: 
-<input type="text" name="msg1" value="jonllen" size="100"/><br/>
+<input type="text" name="msg1" value="hello world" size="100"/><br/>
 <input type="button" value="Crypt message" onClick="doCrypt();"/><br/>
 <p>
 Crypt value (hex): <input type="text" id="sigval1" name="sigval1" value="" size="100"/><br/>
