@@ -1,0 +1,261 @@
+
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <meta name="description" content="JavaScript implementation of SM2 Algorithm Encryption and Decryption sample." />
+  
+    <!--<link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">-->
+    <title>SM2 Algorithm Encryption and Decryption sample</title>
+  
+<!-- for pkcs5pkey -->
+<script src="build/index.js"></script>
+<script language="JavaScript" type="text/javascript">
+
+function rotateLeft1(x, n){
+ return ((x << n) | (x >>> (32 - n)));
+}
+function doGenerate() {
+  var testaa = 2147;
+  // var testaa = (new BigInteger());
+  // testaa.fromInt(2147483647);
+  // var testab = testaa.shiftLeft(11);
+  console.log((255<<24));
+  var testab = rotateLeft1(testaa, 11);
+  console.log(testab);
+  var f1 = document.form1;
+  var curve = f1.curve1.value;
+  var ec = new KJUR.crypto.ECDSA({"curve": curve});
+  var keypair = ec.generateKeyPairHex();
+
+  f1.prvkey1.value = keypair.ecprvhex;
+  f1.pubkey1.value = keypair.ecpubhex;
+}
+
+
+
+function Person () {
+  var name = 1;
+}
+Person.prototype.printName = function () {
+  console.log(this.name);
+}
+
+function doCrypt() {
+    var f1 = document.form1;
+    
+    var curve = f1.curve1.value;
+    var msg = f1.msg1.value;
+    var result = [];
+    var encryptData;
+    var pubkeyHex = f1.pubkey1.value;
+    for(var i=0; i<12; i++){
+      encryptData = sm2Encrypt(msg, pubkeyHex);
+      result.push(encryptData);
+      doDecrypt(encryptData);
+    }
+    f1.sigval1.value = encryptData;
+    console.log(JSON.stringify(result));
+}
+function doDecrypt(encrypData) {
+    var f1 = document.form1;
+    var prvkey = f1.prvkey1.value;
+    encrypData = encrypData||f1.sigval1.value;
+  
+    var data = sm2Decrypt(encrypData, prvkey);
+  
+    console.log(data);
+}
+// function doCrypt() {
+
+//     var f1 = document.form1;
+    
+//     var curve = f1.curve1.value;
+//     var msg = f1.msg1.value;
+//     //msg = stob64(msg);
+//     var result = [];
+//     var encryptData;
+//     for(var i=0; i<2; i++){
+//       var msgData = CryptoJS.enc.Utf8.parse(msg);
+
+//       var pubkeyHex = f1.pubkey1.value;
+//       if (pubkeyHex.length > 64 * 2) {
+//           pubkeyHex = pubkeyHex.substr(pubkeyHex.length - 64 * 2);
+//       }
+
+//       var xHex = pubkeyHex.substr(0, 64);
+//       var yHex = pubkeyHex.substr(64);
+
+//       var cipherMode = f1.cipherMode.value;
+
+//       var cipher = new SM2Cipher(parseInt(cipherMode));
+//       var userKey = cipher.CreatePoint(xHex, yHex);
+
+//       msgData = cipher.GetWords(msgData.toString());
+
+//       encryptData = cipher.Encrypt(userKey, msgData);
+//       doDecrypt(encryptData);
+//       result.push('04'+encryptData);
+//       console.log(i+'-------------');
+//     }
+//     console.log(JSON.stringify(result));
+//     f1.sigval1.value = encryptData;
+// }
+
+// function doDecrypt(encrypData) {
+//     var f1 = document.form1;
+//     var prvkey = f1.prvkey1.value;
+//     encrypData = encrypData||f1.sigval1.value;
+    
+//     var privateKey = new BigInteger(prvkey, 16);
+  
+//   var cipherMode = f1.cipherMode.value;
+        
+//     var cipher = new SM2Cipher(parseInt(cipherMode));
+//     var data = cipher.Decrypt(privateKey, encrypData);
+  
+//     console.log(data);
+// }
+
+// function certCrypt() {
+//     var certData = document.getElementById('txtCertData').value;
+//     if( certData != "") {
+//       var key = X509.getPublicKeyFromCertPEM(certData);
+//     document.getElementById('txtPubKey').value = key.pubKeyHex;
+//     }
+
+//     var pubkey = document.getElementById('txtPubKey').value.replace(/\s/g,'');
+  
+  
+//     var pubkeyHex = pubkey;
+//     if (pubkeyHex.length > 64 * 2) {
+//         pubkeyHex = pubkeyHex.substr(pubkeyHex.length - 64 * 2);
+//     }
+
+//     var xHex = pubkeyHex.substr(0, 64);
+//     var yHex = pubkeyHex.substr(64);
+  
+//   var cipherMode = document.getElementById('cipherMode').value;
+    
+//     var cipher = new SM2Cipher(cipherMode);
+//     var userKey = cipher.CreatePoint(xHex, yHex);
+  
+//   var msg = document.getElementById('txtRawData').value;
+//   var msgData = CryptoJS.enc.Utf8.parse(msg);
+//   msgData = cipher.GetWords(msgData.toString());
+  
+//     var encryptData = cipher.Encrypt(userKey, msgData);
+//     document.getElementById('txtCryptData').value = hex2b64(encryptData);
+// }
+</script>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <h1 id="project_title">SM2 Algorithm Encryption and Decryption sample</h1>
+          <h2 id="project_tagline">generating SM2 keypair, SM2 Algorithm Encryption and Decryption</h2>
+      <a href="http://www.jonllen.com">Home</a> | 
+          <a href="sample-sm2.html">SM2 sample</a> | 
+          <a href="sample-sm2_tool.html" >SM2 Cert Verifcation</a> | 
+          <a href="sample-sm2_crypt.html">SM2 Encryption and Decryption sample</a>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+
+<script type="text/javascript">
+  if(/msie/.test( navigator.userAgent.toLowerCase() )){ document.write("<p><em>若IE浏览器下提示停止运行此脚本，请选择<b>否(N)</b>继续运行。</em></p>");}
+</script>
+  
+<!-- now editing -->
+<form name="form1">
+<h4>(Step1) choose supported EC curve name and generate key pair</h4>
+ECC curve name: 
+<select name="curve1">
+<option value="sm2">SM2
+<option value="secp256r1">secp256r1 (= NIST P-256, P-256, prime256v1)
+<option value="secp256k1">secp256k1
+<option value="secp384r1">secp384r1 (= NIST P-384, P-384)
+</select><br/>
+<input type="button" value="generate EC key pair" onClick="doGenerate();"/><br/>
+<p>
+EC private key (hex): <input type="text" name="prvkey1" value="" size="100"/><br/>
+EC public key (hex): <input type="text" name="pubkey1" value="" size="100"/><br/>
+</p>
+
+<!-- ============================================================== -->
+
+<h4>(Step2) Crypt message</h4>
+Crypt Options: 
+<select id="cipherMode" name="cipherMode">
+<option value="1" selected="selected">C1C3C2
+<option value="0">C1C2C3
+</select><br/>
+
+Message string to be Crypted: 
+<input type="text" name="msg1" value="jonllen" size="100"/><br/>
+<input type="button" value="Crypt message" onClick="doCrypt();"/><br/>
+<p>
+Crypt value (hex): <input type="text" id="sigval1" name="sigval1" value="" size="100"/><br/>
+</p>
+
+<h4>(Step3) Decrypt message</h4>
+<input type="button" value="decrypt it!" onClick="doDecrypt();"/>
+<input type="reset" value="reset"/>
+
+</form>
+<!-- now editing -->
+
+      </section>
+    
+    <section class="inner">
+      <hr size="1" />
+      <h4>SM2 Certificate Encryption</h4>
+        <fieldset>
+            <legend>SM2证书加密</legend>
+            <ul>
+                <li>
+                    <label>原始数据：<input type="text" id="txtRawData"  size="80" 
+           value="jonllen" /></label>
+                </li>
+        <li>
+                    <label>证书数据：<textarea id="txtCertData" style="width:500px; height:40px;">MIICQDCCAeWgAwIBAgIQG2THdO0arf/KaLKoTVlCOzAMBggqgRzPVQGDdQUAMB8xEDAOBgNVBAMMB1NNMlJPT1QxCzAJBgNVBAYTAkNOMB4XDTE0MDYxODEzNTgzNVoXDTE2MDYxODEzNTgzNVowZTEiMCAGCSqGSIb3DQEJARYTam9ubGxlbkBob3RtYWlsLmNvbTEPMA0GA1UEBwwG6ZW/5rKZMQ8wDQYDVQQIDAbmuZbljZcxCzAJBgNVBAYTAkNOMRAwDgYDVQQDDAdKb25sbGVuMFkwEwYHKoZIzj0CAQYIKoEcz1UBgi0DQgAEXLAuT39XB5LJmTprFiGLPfqZl5tyGm1n9oXSVDrGRP2RfQRJOqD6cH6PEvmGhM1ydJv0iQMg2mvh6PjAlm58W6OBujCBtzAMBgNVHRMBAf8EAjAAMB0GA1UdDgQWBBQstXX3UIwlBK9k70GJYGM8mjG6gTAfBgNVHSMEGDAWgBQ/LpOmNnAJt7mAwIZpsX3cnqlkqjBCBggrBgEFBQcBAQQ2MDQwMgYIKwYBBQUHMAKGJmh0dHA6Ly9sb2NhbGhvc3QvUEtJL2NlcnRzL0RTQVJPT1QuY3J0MA4GA1UdDwEB/wQEAwIE8DATBgNVHSUEDDAKBggrBgEFBQcDAjAMBggqgRzPVQGDdQUAA0cAMEQCIBJO7K/XDt+igzKkWSkbRKZRtQKsS1i2Fmdp2Ar5EEL+AiA759mE/uINaEC7sMXOoqzTzkLCMIHGyLi80j0dG5pjow==</textarea>
+            <em>base64编码格式</em>
+          </label>
+                </li>
+                <li style="display:none">
+                    <label>证书公钥：<input type="text" id="txtPubKey" size="120" 
+           value="" /></label>
+                </li>
+        <li>
+          <input type="button" value="加密" onClick="certCrypt();" />
+        </li>
+                <li>
+                    <label>加密后数据：<textarea id="txtCryptData" readonly="readonly" style="width:500px; height:40px;"></textarea><em>base64编码格式</em>
+           </label>
+                </li>
+        
+            </ul>
+            <div>
+                
+            </div>
+        </fieldset>
+      </section>
+    
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p>Powered By <a href="http://www.jonllen.com/" target="_blank">Jonllen</a></p>
+      </footer>
+    </div>
+
+  </body>
+</html>
