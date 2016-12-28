@@ -1,6 +1,6 @@
 {
   "name": "SM2",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "sm2,sm3,cryptojs,crypto,base64,rsa,aes crypt",
   "main": "index.js",
   "scripts": {
