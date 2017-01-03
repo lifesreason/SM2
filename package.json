@@ -1,8 +1,8 @@
 {
-  "name": "SM2",
-  "version": "1.0.0",
+  "name": "sm2",
+  "version": "1.0.1",
   "description": "sm2,sm3,cryptojs,crypto,base64,rsa,aes crypt",
-  "main": "index.js",
+  "main": "build/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -60,7 +60,9 @@
     "gulp": "^3.9.1"
   },
   "dependencies": {
+    "gulp-clean": "^0.3.2",
     "gulp-concat": "^2.6.1",
+    "gulp-load-plugins": "^1.4.0",
     "gulp-uglify": "^2.0.0"
   }
 }
