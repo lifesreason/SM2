@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <meta name="description" content="JavaScript implementation of SM2 Algorithm Encryption and Decryption sample." />
+
+    <!--<link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">-->
+    <title>SM2 Algorithm Encryption and Decryption sample</title>
+    <style>
+        textarea {
+            width: 100%;
+        }
+    </style>
+    <!-- for pkcs5pkey -->
+    <script src="build/index.js"></script>
+    <script language="JavaScript" type="text/javascript">
+        function doGenerate() {
+            var f1 = document.form1;
+            var curve = f1.curve1.value;
+            var ec = new KJUR.crypto.ECDSA({
+                "curve": curve
+            });
+            var keypair = ec.generateKeyPairHex();
+
+            f1.prvkey1.value = keypair.ecprvhex;
+            f1.pubkey1.value = keypair.ecpubhex;
+
+        }
+
+        function doGetAESKey() {
+            var f1 = document.form1;
+            f1.aesKey.value = CryptoJS.lib.WordArray.random(16).toString();
+            f1.aesIV.value = CryptoJS.lib.WordArray.random(16).toString();
+        }
+
+        function doAESCrypt() {
+            var f1 = document.form1;
+            var aesKey = f1.aesKey.value;
+            var aesIV = f1.aesIV.value;
+            var aesSrcData = f1.aesSrcData.value;
+            var aesEncrypted = aesEcrypt(aesSrcData, aesKey, aesIV);
+            f1.msg1.value = aesEncrypted;
+            f1.aesEncrypted.value = aesEncrypted;
+
+        }
+
+        function doAESDecrypt() {
+            var f1 = document.form1;
+            var aesKey = f1.aesKey.value;
+            var aesIV = f1.aesIV.value;
+            var aesEncrypted = f1.aesEncrypted.value;
+            var aesDecrypted = aesDeEcrypt(aesEncrypted, aesKey, aesIV);
+            f1.aesDecrypted.value = aesDecrypted;
+        }
+
+
+        function aesEcrypt(data, keyStr, ivStr) {
+            // 将数据数据进行 utf-8 格式
+            var sendData = CryptoJS.enc.Utf8.parse(data);
+            var key = CryptoJS.enc.Utf8.parse(keyStr);
+            var iv = CryptoJS.enc.Utf8.parse(ivStr);
+            //对数据进行aes加密
+            var aesEcryptData = CryptoJS.AES.encrypt(data, key, {
+                iv: iv,
+                mode: CryptoJS.mode.CBC,
+                padding: CryptoJS.pad.Pkcs7
+            });
+            //对加密后的数据进行 Base64转换
+            return CryptoJS.enc.Base64.stringify(aesEcryptData.ciphertext);
+        }
+
+        function aesDeEcrypt(deData, keyStr, ivStr) {
+            var decryptData = CryptoJS.enc.Base64.parse(deData);
+            var key = CryptoJS.enc.Utf8.parse(keyStr);
+            var iv = CryptoJS.enc.Utf8.parse(ivStr);
+            try {
+                var deEcrypData = CryptoJS.AES.decrypt(decryptData, key, {
+                    iv: iv,
+                    mode: CryptoJS.mode.CBC,
+                    padding: CryptoJS.pad.Pkcs7
+                });
+                return deEcrypData.toString(CryptoJS.enc.Utf8);
+            } catch (e) {
+                console.log(e);
+                return JSON.stringify({
+                    Code: 91,
+                    message: '解密失败'
+                });
+            }
+        }
+
+        function doCrypt() {
+            var f1 = document.form1;
+
+            var curve = f1.curve1.value;
+            var msg = f1.msg1.value;
+            var pubkeyHex = f1.pubkey1.value;
+            var encryptData = sm2Encrypt(msg, pubkeyHex);
+            f1.sigval1.value = encryptData;
+        }
+
+        function doDecrypt(encrypData) {
+            var f1 = document.form1;
+            var prvkey = f1.prvkey1.value;
+            encrypData = encrypData || f1.sigval1.value;
+
+            var data = sm2Decrypt(encrypData, prvkey);
+            f1.deCryptMsg.value = data;
+            console.log(data);
+        }
+    </script>
+</head>
+
+<body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+            <h1 id="project_title">SM2 Algorithm Encryption and Decryption sample</h1>
+            <h2 id="project_tagline">generating SM2 keypair, SM2 Algorithm Encryption and Decryption</h2>
+            <a href="http://www.jonllen.com">Home</a> |
+            <a href="sample-sm2.html">SM2 sample</a> |
+            <a href="sample-sm2_tool.html">SM2 Cert Verifcation</a> |
+            <a href="sample-sm2_crypt.html">SM2 Encryption and Decryption sample</a>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+        <section id="main_content" class="inner">
+
+            <script type="text/javascript">
+                if (/msie/.test(navigator.userAgent.toLowerCase())) {
+                    document.write("<p><em>若IE浏览器下提示停止运行此脚本，请选择<b>否(N)</b>继续运行。</em></p>");
+                }
+            </script>
+            <!-- now editing -->
+            <form name="form1">
+                <h4>AES 加密 CBC Pkcs7</h4>
+
+                <br/>
+                <input type="button" value="获取aes iv key" onClick="doGetAESKey();" /><br/>
+                <p>
+                    aes key: <input type="text" name="aesKey" value="" size="100" />
+                    <br/> aes iv:
+                    <input type="text" name="aesIV" value="" size="100" /><br/>
+                </p>
+
+                <!-- ============================================================== -->
+
+                <h4>(Step2)AES Crypt message</h4>
+
+                <br/> Message aes string to be Crypted:
+                <textarea width="100%" name="aesSrcData" rows="6">
+                    据冯梦龙比较严肃、真实的历史小说《东周列国志》记述，周之阳城地界，有一个山谷，山深树密，幽不可测，不是人所能居住的地方，所以叫“鬼谷”。谷中居有一位隐者，自号鬼谷子，相传是晋平公时人，姓王名诩。他在云梦山与宋人墨翟一起采药修道。墨子不娶妻不养子，云游天下，济人利物，救危扶穷。鬼谷子王诩则通天彻底，其学问之渊博，无人能及：“一曰数学，日星象纬，在其掌中，占往察来，言无不验；二曰兵学，六韬三略，变化无穷，布阵行兵，鬼神不测；三曰游学，广记多闻，明理审势，出词吐辩，万口莫当；四曰出世学，修真养性，服食导引，却病延年，冲举可俟。”（参看冯梦龙《东周列国志》第87回。）鬼谷先生既然深知仙家的冲举超凡之术，为何要屈居人间俗世呢？原来，他只是为了超度几个聪明的弟子，同归仙境，所以栖身鬼谷。他住隐居鬼谷不计年数，其弟子也不计其数。据说，他的最出色的弟子是苏秦、张仪。前一位是七国征战时的著名军事家，而后一位是战国时的著名纵横家。此外，帮助越王勾践卧薪尝胆，战胜吴王夫差成功复国的谋略家范蠡，也传说是鬼谷子的弟子；战国时著名外交家毛遂，也传说是鬼谷子的弟子；秦代采药养生的大师徐福，也传说是鬼谷子的弟子。传说中鬼谷子还有一个师妹，就是拥有九天秘籍，熟谙天机、人道、地脉的九天玄女，师兄妹俩人同是师承于道家的创始人老聃。华裔澳洲国籍的著名历史小说家萧玉寒就写了一本《鬼谷子》传奇，专门讲鬼谷子和九天玄女的传奇故事
+                </textarea>
+                <br/>
+                <input type="button" value="AES Crypt message" onClick="doAESCrypt();" /><br/>
+                <p>
+                    Crypt value:
+                    <textarea width="100%" name="aesEncrypted" id="aesEncrypted" rows="6"> </textarea><br/>
+                </p>
+
+                <h4>(Step3) Decrypt message</h4>
+                <input type="button" value="decrypt it!" onClick="doAESDecrypt();" /> deCrypt value:
+                <textarea width="100%" name="aesDecrypted" id="aesDecrypted" rows="6"></textarea><br/>
+
+                <h4>(Step1) choose supported EC curve name and generate key pair</h4>
+                ECC curve name:
+                <select name="curve1">
+                    <option value="sm2">SM2
+                    <option value="secp256r1">secp256r1 (= NIST P-256, P-256, prime256v1)
+                    <option value="secp256k1">secp256k1
+                    <option value="secp384r1">secp384r1 (= NIST P-384, P-384)
+                </select>
+                <br/>
+                <input type="button" value="generate EC key pair" onClick="doGenerate();" /><br/>
+                <p>
+                    EC private key (hex): <input type="text" name="prvkey1" value="" size="100" /><br/> EC public key (hex): <input type="text" name="pubkey1" value="" size="100" /><br/>
+                </p>
+
+                <!-- ============================================================== -->
+
+                <h4>(Step2) Crypt message</h4>
+                Crypt Options:
+                <select id="cipherMode" name="cipherMode">
+                    <option value="1" selected="selected">C1C3C2
+                    <option value="0">C1C2C3
+                </select>
+                <br/> Message string to be Crypted:
+                <textarea width="100%" name="msg1" id="msg1" rows="6"> </textarea><br/>
+                <input type="button" value="Crypt message" onClick="doCrypt();" /><br/>
+                <p>
+                    Crypt value (hex):<textarea width="100%" name="sigval1" id="sigval1" rows="6"> </textarea><br/>
+                </p>
+
+                <h4>(Step3) Decrypt message</h4>
+                <input type="button" value="decrypt it!" onClick="doDecrypt();" /> Decrypt message：<textarea width="100%" name="deCryptMsg" id="deCryptMsg" rows="6"> </textarea><br/>
+                <input type="reset" value="reset" />
+
+            </form>
+            <!-- now editing -->
+
+        </section>
+
+        <section class="inner">
+            <hr size="1" />
+            <h4>SM2 Certificate Encryption</h4>
+            <fieldset>
+                <legend>SM2证书加密</legend>
+                <ul>
+                    <li>
+                        <label>原始数据：<input type="text" id="txtRawData"  size="80" 
+           value="jonllen" /></label>
+                    </li>
+                    <li>
+                        <label>证书数据：<textarea width="100%" id="txtCertData" style="width:500px; height:40px;">MIICQDCCAeWgAwIBAgIQG2THdO0arf/KaLKoTVlCOzAMBggqgRzPVQGDdQUAMB8xEDAOBgNVBAMMB1NNMlJPT1QxCzAJBgNVBAYTAkNOMB4XDTE0MDYxODEzNTgzNVoXDTE2MDYxODEzNTgzNVowZTEiMCAGCSqGSIb3DQEJARYTam9ubGxlbkBob3RtYWlsLmNvbTEPMA0GA1UEBwwG6ZW/5rKZMQ8wDQYDVQQIDAbmuZbljZcxCzAJBgNVBAYTAkNOMRAwDgYDVQQDDAdKb25sbGVuMFkwEwYHKoZIzj0CAQYIKoEcz1UBgi0DQgAEXLAuT39XB5LJmTprFiGLPfqZl5tyGm1n9oXSVDrGRP2RfQRJOqD6cH6PEvmGhM1ydJv0iQMg2mvh6PjAlm58W6OBujCBtzAMBgNVHRMBAf8EAjAAMB0GA1UdDgQWBBQstXX3UIwlBK9k70GJYGM8mjG6gTAfBgNVHSMEGDAWgBQ/LpOmNnAJt7mAwIZpsX3cnqlkqjBCBggrBgEFBQcBAQQ2MDQwMgYIKwYBBQUHMAKGJmh0dHA6Ly9sb2NhbGhvc3QvUEtJL2NlcnRzL0RTQVJPT1QuY3J0MA4GA1UdDwEB/wQEAwIE8DATBgNVHSUEDDAKBggrBgEFBQcDAjAMBggqgRzPVQGDdQUAA0cAMEQCIBJO7K/XDt+igzKkWSkbRKZRtQKsS1i2Fmdp2Ar5EEL+AiA759mE/uINaEC7sMXOoqzTzkLCMIHGyLi80j0dG5pjow==</textarea>
+                <em>base64编码格式</em>
+                </label>
+                    </li>
+                    <li style="display:none">
+                        <label>证书公钥：<input type="text" id="txtPubKey" size="120" 
+           value="" /></label>
+                    </li>
+                    <li>
+                        <input type="button" value="加密" onClick="certCrypt();" />
+                    </li>
+                    <li>
+                        <label>加密后数据：<textarea width="100%" id="txtCryptData" readonly="readonly" style="width:500px; height:40px;"></textarea><em>base64编码格式</em>
+           </label>
+                    </li>
+
+                </ul>
+                <div>
+
+                </div>
+            </fieldset>
+        </section>
+
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+        <footer class="inner">
+            <p>Powered By <a href="http://www.jonllen.com/" target="_blank">Jonllen</a></p>
+        </footer>
+    </div>
+
+</body>
+
+</html>

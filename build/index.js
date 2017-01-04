@@ -11586,10 +11586,232 @@ code.google.com/p/crypto-js
 (c) 2009-2013 by Jeff Mott. All rights reserved.
 code.google.com/p/crypto-js/wiki/License
 */
+(function () {
+    // Shortcuts
+    var C = CryptoJS;
+    var C_lib = C.lib;
+    var WordArray = C_lib.WordArray;
+    var C_enc = C.enc;
+
+    /**
+     * Base64 encoding strategy.
+     */
+    var Base64 = C_enc.Base64 = {
+        /**
+         * Converts a word array to a Base64 string.
+         *
+         * @param {WordArray} wordArray The word array.
+         *
+         * @return {string} The Base64 string.
+         *
+         * @static
+         *
+         * @example
+         *
+         *     var base64String = CryptoJS.enc.Base64.stringify(wordArray);
+         */
+        stringify: function (wordArray) {
+            // Shortcuts
+            var words = wordArray.words;
+            var sigBytes = wordArray.sigBytes;
+            var map = this._map;
+
+            // Clamp excess bits
+            wordArray.clamp();
+
+            // Convert
+            var base64Chars = [];
+            for (var i = 0; i < sigBytes; i += 3) {
+                var byte1 = (words[i >>> 2]       >>> (24 - (i % 4) * 8))       & 0xff;
+                var byte2 = (words[(i + 1) >>> 2] >>> (24 - ((i + 1) % 4) * 8)) & 0xff;
+                var byte3 = (words[(i + 2) >>> 2] >>> (24 - ((i + 2) % 4) * 8)) & 0xff;
+
+                var triplet = (byte1 << 16) | (byte2 << 8) | byte3;
+
+                for (var j = 0; (j < 4) && (i + j * 0.75 < sigBytes); j++) {
+                    base64Chars.push(map.charAt((triplet >>> (6 * (3 - j))) & 0x3f));
+                }
+            }
+
+            // Add padding
+            var paddingChar = map.charAt(64);
+            if (paddingChar) {
+                while (base64Chars.length % 4) {
+                    base64Chars.push(paddingChar);
+                }
+            }
+
+            return base64Chars.join('');
+        },
+
+        /**
+         * Converts a Base64 string to a word array.
+         *
+         * @param {string} base64Str The Base64 string.
+         *
+         * @return {WordArray} The word array.
+         *
+         * @static
+         *
+         * @example
+         *
+         *     var wordArray = CryptoJS.enc.Base64.parse(base64String);
+         */
+        parse: function (base64Str) {
+            // Shortcuts
+            var base64StrLength = base64Str.length;
+            var map = this._map;
+
+            // Ignore padding
+            var paddingChar = map.charAt(64);
+            if (paddingChar) {
+                var paddingIndex = base64Str.indexOf(paddingChar);
+                if (paddingIndex != -1) {
+                    base64StrLength = paddingIndex;
+                }
+            }
+
+            // Convert
+            var words = [];
+            var nBytes = 0;
+            for (var i = 0; i < base64StrLength; i++) {
+                if (i % 4) {
+                    var bits1 = map.indexOf(base64Str.charAt(i - 1)) << ((i % 4) * 2);
+                    var bits2 = map.indexOf(base64Str.charAt(i)) >>> (6 - (i % 4) * 2);
+                    words[nBytes >>> 2] |= (bits1 | bits2) << (24 - (nBytes % 4) * 8);
+                    nBytes++;
+                }
+            }
+
+            return WordArray.create(words, nBytes);
+        },
+
+        _map: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
+    };
+}());
+
+(function() {
+    // Shortcuts
+    var C = CryptoJS;
+    var C_lib = C.lib;
+    var Base = C_lib.Base;
+    var WordArray = C_lib.WordArray;
+    var C_algo = C.algo;
+    var MD5 = C_algo.MD5;
+
+    /**
+     * This key derivation function is meant to conform with EVP_BytesToKey.
+     * www.openssl.org/docs/crypto/EVP_BytesToKey.html
+     */
+    var EvpKDF = C_algo.EvpKDF = Base.extend({
+        /**
+         * Configuration options.
+         *
+         * @property {number} keySize The key size in words to generate. Default: 4 (128 bits)
+         * @property {Hasher} hasher The hash algorithm to use. Default: MD5
+         * @property {number} iterations The number of iterations to perform. Default: 1
+         */
+        cfg: Base.extend({
+            keySize: 128 / 32,
+            hasher: MD5,
+            iterations: 1
+        }),
+
+        /**
+         * Initializes a newly created key derivation function.
+         *
+         * @param {Object} cfg (Optional) The configuration options to use for the derivation.
+         *
+         * @example
+         *
+         *     var kdf = CryptoJS.algo.EvpKDF.create();
+         *     var kdf = CryptoJS.algo.EvpKDF.create({ keySize: 8 });
+         *     var kdf = CryptoJS.algo.EvpKDF.create({ keySize: 8, iterations: 1000 });
+         */
+        init: function(cfg) {
+            this.cfg = this.cfg.extend(cfg);
+        },
+
+        /**
+         * Derives a key from a password.
+         *
+         * @param {WordArray|string} password The password.
+         * @param {WordArray|string} salt A salt.
+         *
+         * @return {WordArray} The derived key.
+         *
+         * @example
+         *
+         *     var key = kdf.compute(password, salt);
+         */
+        compute: function(password, salt) {
+            // Shortcut
+            var cfg = this.cfg;
+
+            // Init hasher
+            var hasher = cfg.hasher.create();
+
+            // Initial values
+            var derivedKey = WordArray.create();
+
+            // Shortcuts
+            var derivedKeyWords = derivedKey.words;
+            var keySize = cfg.keySize;
+            var iterations = cfg.iterations;
+
+            // Generate key
+            while (derivedKeyWords.length < keySize) {
+                if (block) {
+                    hasher.update(block);
+                }
+                var block = hasher.update(password).finalize(salt);
+                hasher.reset();
+
+                // Iterations
+                for (var i = 1; i < iterations; i++) {
+                    block = hasher.finalize(block);
+                    hasher.reset();
+                }
+
+                derivedKey.concat(block);
+            }
+            derivedKey.sigBytes = keySize * 4;
+
+            return derivedKey;
+        }
+    });
+
+    /**
+     * Derives a key from a password.
+     *
+     * @param {WordArray|string} password The password.
+     * @param {WordArray|string} salt A salt.
+     * @param {Object} cfg (Optional) The configuration options to use for this computation.
+     *
+     * @return {WordArray} The derived key.
+     *
+     * @static
+     *
+     * @example
+     *
+     *     var key = CryptoJS.EvpKDF(password, salt);
+     *     var key = CryptoJS.EvpKDF(password, salt, { keySize: 8 });
+     *     var key = CryptoJS.EvpKDF(password, salt, { keySize: 8, iterations: 1000 });
+     */
+    C.EvpKDF = function(password, salt, cfg) {
+        return EvpKDF.create(cfg).compute(password, salt);
+    };
+}());
+/*
+CryptoJS v3.1.2
+code.google.com/p/crypto-js
+(c) 2009-2013 by Jeff Mott. All rights reserved.
+code.google.com/p/crypto-js/wiki/License
+*/
 /**
  * Cipher core components.
  */
-CryptoJS.lib.Cipher || (function (undefined) {
+CryptoJS.lib.Cipher || (function(undefined) {
     // Shortcuts
     var C = CryptoJS;
     var C_lib = C.lib;
@@ -11632,7 +11854,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
          *
          *     var cipher = CryptoJS.algo.AES.createEncryptor(keyWordArray, { iv: ivWordArray });
          */
-        createEncryptor: function (key, cfg) {
+        createEncryptor: function(key, cfg) {
             return this.create(this._ENC_XFORM_MODE, key, cfg);
         },
 
@@ -11650,7 +11872,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
          *
          *     var cipher = CryptoJS.algo.AES.createDecryptor(keyWordArray, { iv: ivWordArray });
          */
-        createDecryptor: function (key, cfg) {
+        createDecryptor: function(key, cfg) {
             return this.create(this._DEC_XFORM_MODE, key, cfg);
         },
 
@@ -11665,7 +11887,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
          *
          *     var cipher = CryptoJS.algo.AES.create(CryptoJS.algo.AES._ENC_XFORM_MODE, keyWordArray, { iv: ivWordArray });
          */
-        init: function (xformMode, key, cfg) {
+        init: function(xformMode, key, cfg) {
             // Apply config defaults
             this.cfg = this.cfg.extend(cfg);
 
@@ -11684,7 +11906,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
          *
          *     cipher.reset();
          */
-        reset: function () {
+        reset: function() {
             // Reset data buffer
             BufferedBlockAlgorithm.reset.call(this);
 
@@ -11704,7 +11926,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
          *     var encrypted = cipher.process('data');
          *     var encrypted = cipher.process(wordArray);
          */
-        process: function (dataUpdate) {
+        process: function(dataUpdate) {
             // Append
             this._append(dataUpdate);
 
@@ -11726,7 +11948,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
          *     var encrypted = cipher.finalize('data');
          *     var encrypted = cipher.finalize(wordArray);
          */
-        finalize: function (dataUpdate) {
+        finalize: function(dataUpdate) {
             // Final data update
             if (dataUpdate) {
                 this._append(dataUpdate);
@@ -11738,9 +11960,9 @@ CryptoJS.lib.Cipher || (function (undefined) {
             return finalProcessedData;
         },
 
-        keySize: 128/32,
+        keySize: 128 / 32,
 
-        ivSize: 128/32,
+        ivSize: 128 / 32,
 
         _ENC_XFORM_MODE: 1,
 
@@ -11759,7 +11981,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
          *
          *     var AES = CryptoJS.lib.Cipher._createHelper(CryptoJS.algo.AES);
          */
-        _createHelper: (function () {
+        _createHelper: (function() {
             function selectCipherStrategy(key) {
                 if (typeof key == 'string') {
                     return PasswordBasedCipher;
@@ -11768,13 +11990,13 @@ CryptoJS.lib.Cipher || (function (undefined) {
                 }
             }
 
-            return function (cipher) {
+            return function(cipher) {
                 return {
-                    encrypt: function (message, key, cfg) {
+                    encrypt: function(message, key, cfg) {
                         return selectCipherStrategy(key).encrypt(cipher, message, key, cfg);
                     },
 
-                    decrypt: function (ciphertext, key, cfg) {
+                    decrypt: function(ciphertext, key, cfg) {
                         return selectCipherStrategy(key).decrypt(cipher, ciphertext, key, cfg);
                     }
                 };
@@ -11788,7 +12010,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
      * @property {number} blockSize The number of 32-bit words this cipher operates on. Default: 1 (32 bits)
      */
     var StreamCipher = C_lib.StreamCipher = Cipher.extend({
-        _doFinalize: function () {
+        _doFinalize: function() {
             // Process partial blocks
             var finalProcessedBlocks = this._process(!!'flush');
 
@@ -11819,7 +12041,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
          *
          *     var mode = CryptoJS.mode.CBC.createEncryptor(cipher, iv.words);
          */
-        createEncryptor: function (cipher, iv) {
+        createEncryptor: function(cipher, iv) {
             return this.Encryptor.create(cipher, iv);
         },
 
@@ -11835,7 +12057,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
          *
          *     var mode = CryptoJS.mode.CBC.createDecryptor(cipher, iv.words);
          */
-        createDecryptor: function (cipher, iv) {
+        createDecryptor: function(cipher, iv) {
             return this.Decryptor.create(cipher, iv);
         },
 
@@ -11849,7 +12071,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
          *
          *     var mode = CryptoJS.mode.CBC.Encryptor.create(cipher, iv.words);
          */
-        init: function (cipher, iv) {
+        init: function(cipher, iv) {
             this._cipher = cipher;
             this._iv = iv;
         }
@@ -11858,7 +12080,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
     /**
      * Cipher Block Chaining mode.
      */
-    var CBC = C_mode.CBC = (function () {
+    var CBC = C_mode.CBC = (function() {
         /**
          * Abstract base CBC mode.
          */
@@ -11878,7 +12100,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
              *
              *     mode.processBlock(data.words, offset);
              */
-            processBlock: function (words, offset) {
+            processBlock: function(words, offset) {
                 // Shortcuts
                 var cipher = this._cipher;
                 var blockSize = cipher.blockSize;
@@ -11906,7 +12128,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
              *
              *     mode.processBlock(data.words, offset);
              */
-            processBlock: function (words, offset) {
+            processBlock: function(words, offset) {
                 // Shortcuts
                 var cipher = this._cipher;
                 var blockSize = cipher.blockSize;
@@ -11967,7 +12189,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
          *
          *     CryptoJS.pad.Pkcs7.pad(wordArray, 4);
          */
-        pad: function (data, blockSize) {
+        pad: function(data, blockSize) {
             // Shortcut
             var blockSizeBytes = blockSize * 4;
 
@@ -11999,7 +12221,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
          *
          *     CryptoJS.pad.Pkcs7.unpad(wordArray);
          */
-        unpad: function (data) {
+        unpad: function(data) {
             // Get number of padding bytes from last byte
             var nPaddingBytes = data.words[(data.sigBytes - 1) >>> 2] & 0xff;
 
@@ -12025,7 +12247,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
             padding: Pkcs7
         }),
 
-        reset: function () {
+        reset: function() {
             // Reset cipher
             Cipher.reset.call(this);
 
@@ -12046,11 +12268,11 @@ CryptoJS.lib.Cipher || (function (undefined) {
             this._mode = modeCreator.call(mode, this, iv && iv.words);
         },
 
-        _doProcessBlock: function (words, offset) {
+        _doProcessBlock: function(words, offset) {
             this._mode.processBlock(words, offset);
         },
 
-        _doFinalize: function () {
+        _doFinalize: function() {
             // Shortcut
             var padding = this.cfg.padding;
 
@@ -12072,7 +12294,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
             return finalProcessedBlocks;
         },
 
-        blockSize: 128/32
+        blockSize: 128 / 32
     });
 
     /**
@@ -12108,7 +12330,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
          *         formatter: CryptoJS.format.OpenSSL
          *     });
          */
-        init: function (cipherParams) {
+        init: function(cipherParams) {
             this.mixIn(cipherParams);
         },
 
@@ -12127,7 +12349,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
          *     var string = cipherParams.toString();
          *     var string = cipherParams.toString(CryptoJS.format.OpenSSL);
          */
-        toString: function (formatter) {
+        toString: function(formatter) {
             return (formatter || this.formatter).stringify(this);
         }
     });
@@ -12154,7 +12376,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
          *
          *     var openSSLString = CryptoJS.format.OpenSSL.stringify(cipherParams);
          */
-        stringify: function (cipherParams) {
+        stringify: function(cipherParams) {
             // Shortcuts
             var ciphertext = cipherParams.ciphertext;
             var salt = cipherParams.salt;
@@ -12182,7 +12404,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
          *
          *     var cipherParams = CryptoJS.format.OpenSSL.parse(openSSLString);
          */
-        parse: function (openSSLStr) {
+        parse: function(openSSLStr) {
             // Parse base64
             var ciphertext = Base64.parse(openSSLStr);
 
@@ -12234,7 +12456,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
          *     var ciphertextParams = CryptoJS.lib.SerializableCipher.encrypt(CryptoJS.algo.AES, message, key, { iv: iv });
          *     var ciphertextParams = CryptoJS.lib.SerializableCipher.encrypt(CryptoJS.algo.AES, message, key, { iv: iv, format: CryptoJS.format.OpenSSL });
          */
-        encrypt: function (cipher, message, key, cfg) {
+        encrypt: function(cipher, message, key, cfg) {
             // Apply config defaults
             cfg = this.cfg.extend(cfg);
 
@@ -12275,7 +12497,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
          *     var plaintext = CryptoJS.lib.SerializableCipher.decrypt(CryptoJS.algo.AES, formattedCiphertext, key, { iv: iv, format: CryptoJS.format.OpenSSL });
          *     var plaintext = CryptoJS.lib.SerializableCipher.decrypt(CryptoJS.algo.AES, ciphertextParams, key, { iv: iv, format: CryptoJS.format.OpenSSL });
          */
-        decrypt: function (cipher, ciphertext, key, cfg) {
+        decrypt: function(cipher, ciphertext, key, cfg) {
             // Apply config defaults
             cfg = this.cfg.extend(cfg);
 
@@ -12283,7 +12505,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
             ciphertext = this._parse(ciphertext, cfg.format);
 
             // Decrypt
-            var plaintext = cipher.createDecryptor(key, cfg).finalize(ciphertext.ciphertext);
+            var plaintext = cipher.createDecryptor(key, cfg).finalize(ciphertext.ciphertext || ciphertext);
 
             return plaintext;
         },
@@ -12303,7 +12525,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
          *
          *     var ciphertextParams = CryptoJS.lib.SerializableCipher._parse(ciphertextStringOrParams, format);
          */
-        _parse: function (ciphertext, format) {
+        _parse: function(ciphertext, format) {
             if (typeof ciphertext == 'string') {
                 return format.parse(ciphertext, this);
             } else {
@@ -12338,10 +12560,10 @@ CryptoJS.lib.Cipher || (function (undefined) {
          *     var derivedParams = CryptoJS.kdf.OpenSSL.execute('Password', 256/32, 128/32);
          *     var derivedParams = CryptoJS.kdf.OpenSSL.execute('Password', 256/32, 128/32, 'saltsalt');
          */
-        execute: function (password, keySize, ivSize, salt) {
+        execute: function(password, keySize, ivSize, salt) {
             // Generate random salt
             if (!salt) {
-                salt = WordArray.random(64/8);
+                salt = WordArray.random(64 / 8);
             }
 
             // Derive key and IV
@@ -12387,7 +12609,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
          *     var ciphertextParams = CryptoJS.lib.PasswordBasedCipher.encrypt(CryptoJS.algo.AES, message, 'password');
          *     var ciphertextParams = CryptoJS.lib.PasswordBasedCipher.encrypt(CryptoJS.algo.AES, message, 'password', { format: CryptoJS.format.OpenSSL });
          */
-        encrypt: function (cipher, message, password, cfg) {
+        encrypt: function(cipher, message, password, cfg) {
             // Apply config defaults
             cfg = this.cfg.extend(cfg);
 
@@ -12423,7 +12645,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
          *     var plaintext = CryptoJS.lib.PasswordBasedCipher.decrypt(CryptoJS.algo.AES, formattedCiphertext, 'password', { format: CryptoJS.format.OpenSSL });
          *     var plaintext = CryptoJS.lib.PasswordBasedCipher.decrypt(CryptoJS.algo.AES, ciphertextParams, 'password', { format: CryptoJS.format.OpenSSL });
          */
-        decrypt: function (cipher, ciphertext, password, cfg) {
+        decrypt: function(cipher, ciphertext, password, cfg) {
             // Apply config defaults
             cfg = this.cfg.extend(cfg);
 
@@ -12443,7 +12665,6 @@ CryptoJS.lib.Cipher || (function (undefined) {
         }
     });
 }());
-
 /*
 CryptoJS v3.1.2
 code.google.com/p/crypto-js
@@ -14612,775 +14833,6 @@ code.google.com/p/crypto-js/wiki/License
     // Shortcuts
     var C = CryptoJS;
     var C_lib = C.lib;
-    var BlockCipher = C_lib.BlockCipher;
-    var C_algo = C.algo;
-
-    // Lookup tables
-    var SBOX = [];
-    var INV_SBOX = [];
-    var SUB_MIX_0 = [];
-    var SUB_MIX_1 = [];
-    var SUB_MIX_2 = [];
-    var SUB_MIX_3 = [];
-    var INV_SUB_MIX_0 = [];
-    var INV_SUB_MIX_1 = [];
-    var INV_SUB_MIX_2 = [];
-    var INV_SUB_MIX_3 = [];
-
-    // Compute lookup tables
-    (function () {
-        // Compute double table
-        var d = [];
-        for (var i = 0; i < 256; i++) {
-            if (i < 128) {
-                d[i] = i << 1;
-            } else {
-                d[i] = (i << 1) ^ 0x11b;
-            }
-        }
-
-        // Walk GF(2^8)
-        var x = 0;
-        var xi = 0;
-        for (var i = 0; i < 256; i++) {
-            // Compute sbox
-            var sx = xi ^ (xi << 1) ^ (xi << 2) ^ (xi << 3) ^ (xi << 4);
-            sx = (sx >>> 8) ^ (sx & 0xff) ^ 0x63;
-            SBOX[x] = sx;
-            INV_SBOX[sx] = x;
-
-            // Compute multiplication
-            var x2 = d[x];
-            var x4 = d[x2];
-            var x8 = d[x4];
-
-            // Compute sub bytes, mix columns tables
-            var t = (d[sx] * 0x101) ^ (sx * 0x1010100);
-            SUB_MIX_0[x] = (t << 24) | (t >>> 8);
-            SUB_MIX_1[x] = (t << 16) | (t >>> 16);
-            SUB_MIX_2[x] = (t << 8)  | (t >>> 24);
-            SUB_MIX_3[x] = t;
-
-            // Compute inv sub bytes, inv mix columns tables
-            var t = (x8 * 0x1010101) ^ (x4 * 0x10001) ^ (x2 * 0x101) ^ (x * 0x1010100);
-            INV_SUB_MIX_0[sx] = (t << 24) | (t >>> 8);
-            INV_SUB_MIX_1[sx] = (t << 16) | (t >>> 16);
-            INV_SUB_MIX_2[sx] = (t << 8)  | (t >>> 24);
-            INV_SUB_MIX_3[sx] = t;
-
-            // Compute next counter
-            if (!x) {
-                x = xi = 1;
-            } else {
-                x = x2 ^ d[d[d[x8 ^ x2]]];
-                xi ^= d[d[xi]];
-            }
-        }
-    }());
-
-    // Precomputed Rcon lookup
-    var RCON = [0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36];
-
-    /**
-     * AES block cipher algorithm.
-     */
-    var AES = C_algo.AES = BlockCipher.extend({
-        _doReset: function () {
-            // Shortcuts
-            var key = this._key;
-            var keyWords = key.words;
-            var keySize = key.sigBytes / 4;
-
-            // Compute number of rounds
-            var nRounds = this._nRounds = keySize + 6
-
-            // Compute number of key schedule rows
-            var ksRows = (nRounds + 1) * 4;
-
-            // Compute key schedule
-            var keySchedule = this._keySchedule = [];
-            for (var ksRow = 0; ksRow < ksRows; ksRow++) {
-                if (ksRow < keySize) {
-                    keySchedule[ksRow] = keyWords[ksRow];
-                } else {
-                    var t = keySchedule[ksRow - 1];
-
-                    if (!(ksRow % keySize)) {
-                        // Rot word
-                        t = (t << 8) | (t >>> 24);
-
-                        // Sub word
-                        t = (SBOX[t >>> 24] << 24) | (SBOX[(t >>> 16) & 0xff] << 16) | (SBOX[(t >>> 8) & 0xff] << 8) | SBOX[t & 0xff];
-
-                        // Mix Rcon
-                        t ^= RCON[(ksRow / keySize) | 0] << 24;
-                    } else if (keySize > 6 && ksRow % keySize == 4) {
-                        // Sub word
-                        t = (SBOX[t >>> 24] << 24) | (SBOX[(t >>> 16) & 0xff] << 16) | (SBOX[(t >>> 8) & 0xff] << 8) | SBOX[t & 0xff];
-                    }
-
-                    keySchedule[ksRow] = keySchedule[ksRow - keySize] ^ t;
-                }
-            }
-
-            // Compute inv key schedule
-            var invKeySchedule = this._invKeySchedule = [];
-            for (var invKsRow = 0; invKsRow < ksRows; invKsRow++) {
-                var ksRow = ksRows - invKsRow;
-
-                if (invKsRow % 4) {
-                    var t = keySchedule[ksRow];
-                } else {
-                    var t = keySchedule[ksRow - 4];
-                }
-
-                if (invKsRow < 4 || ksRow <= 4) {
-                    invKeySchedule[invKsRow] = t;
-                } else {
-                    invKeySchedule[invKsRow] = INV_SUB_MIX_0[SBOX[t >>> 24]] ^ INV_SUB_MIX_1[SBOX[(t >>> 16) & 0xff]] ^
-                                               INV_SUB_MIX_2[SBOX[(t >>> 8) & 0xff]] ^ INV_SUB_MIX_3[SBOX[t & 0xff]];
-                }
-            }
-        },
-
-        encryptBlock: function (M, offset) {
-            this._doCryptBlock(M, offset, this._keySchedule, SUB_MIX_0, SUB_MIX_1, SUB_MIX_2, SUB_MIX_3, SBOX);
-        },
-
-        decryptBlock: function (M, offset) {
-            // Swap 2nd and 4th rows
-            var t = M[offset + 1];
-            M[offset + 1] = M[offset + 3];
-            M[offset + 3] = t;
-
-            this._doCryptBlock(M, offset, this._invKeySchedule, INV_SUB_MIX_0, INV_SUB_MIX_1, INV_SUB_MIX_2, INV_SUB_MIX_3, INV_SBOX);
-
-            // Inv swap 2nd and 4th rows
-            var t = M[offset + 1];
-            M[offset + 1] = M[offset + 3];
-            M[offset + 3] = t;
-        },
-
-        _doCryptBlock: function (M, offset, keySchedule, SUB_MIX_0, SUB_MIX_1, SUB_MIX_2, SUB_MIX_3, SBOX) {
-            // Shortcut
-            var nRounds = this._nRounds;
-
-            // Get input, add round key
-            var s0 = M[offset]     ^ keySchedule[0];
-            var s1 = M[offset + 1] ^ keySchedule[1];
-            var s2 = M[offset + 2] ^ keySchedule[2];
-            var s3 = M[offset + 3] ^ keySchedule[3];
-
-            // Key schedule row counter
-            var ksRow = 4;
-
-            // Rounds
-            for (var round = 1; round < nRounds; round++) {
-                // Shift rows, sub bytes, mix columns, add round key
-                var t0 = SUB_MIX_0[s0 >>> 24] ^ SUB_MIX_1[(s1 >>> 16) & 0xff] ^ SUB_MIX_2[(s2 >>> 8) & 0xff] ^ SUB_MIX_3[s3 & 0xff] ^ keySchedule[ksRow++];
-                var t1 = SUB_MIX_0[s1 >>> 24] ^ SUB_MIX_1[(s2 >>> 16) & 0xff] ^ SUB_MIX_2[(s3 >>> 8) & 0xff] ^ SUB_MIX_3[s0 & 0xff] ^ keySchedule[ksRow++];
-                var t2 = SUB_MIX_0[s2 >>> 24] ^ SUB_MIX_1[(s3 >>> 16) & 0xff] ^ SUB_MIX_2[(s0 >>> 8) & 0xff] ^ SUB_MIX_3[s1 & 0xff] ^ keySchedule[ksRow++];
-                var t3 = SUB_MIX_0[s3 >>> 24] ^ SUB_MIX_1[(s0 >>> 16) & 0xff] ^ SUB_MIX_2[(s1 >>> 8) & 0xff] ^ SUB_MIX_3[s2 & 0xff] ^ keySchedule[ksRow++];
-
-                // Update state
-                s0 = t0;
-                s1 = t1;
-                s2 = t2;
-                s3 = t3;
-            }
-
-            // Shift rows, sub bytes, add round key
-            var t0 = ((SBOX[s0 >>> 24] << 24) | (SBOX[(s1 >>> 16) & 0xff] << 16) | (SBOX[(s2 >>> 8) & 0xff] << 8) | SBOX[s3 & 0xff]) ^ keySchedule[ksRow++];
-            var t1 = ((SBOX[s1 >>> 24] << 24) | (SBOX[(s2 >>> 16) & 0xff] << 16) | (SBOX[(s3 >>> 8) & 0xff] << 8) | SBOX[s0 & 0xff]) ^ keySchedule[ksRow++];
-            var t2 = ((SBOX[s2 >>> 24] << 24) | (SBOX[(s3 >>> 16) & 0xff] << 16) | (SBOX[(s0 >>> 8) & 0xff] << 8) | SBOX[s1 & 0xff]) ^ keySchedule[ksRow++];
-            var t3 = ((SBOX[s3 >>> 24] << 24) | (SBOX[(s0 >>> 16) & 0xff] << 16) | (SBOX[(s1 >>> 8) & 0xff] << 8) | SBOX[s2 & 0xff]) ^ keySchedule[ksRow++];
-
-            // Set output
-            M[offset]     = t0;
-            M[offset + 1] = t1;
-            M[offset + 2] = t2;
-            M[offset + 3] = t3;
-        },
-
-        keySize: 256/32
-    });
-
-    /**
-     * Shortcut functions to the cipher's object interface.
-     *
-     * @example
-     *
-     *     var ciphertext = CryptoJS.AES.encrypt(message, key, cfg);
-     *     var plaintext  = CryptoJS.AES.decrypt(ciphertext, key, cfg);
-     */
-    C.AES = BlockCipher._createHelper(AES);
-}());
-
-/*! (c) Tom Wu | http://www-cs-students.stanford.edu/~tjw/jsbn/
- */
-// Random number generator - requires a PRNG backend, e.g. prng4.js
-
-// For best results, put code like
-// <body onClick='rng_seed_time();' onKeyPress='rng_seed_time();'>
-// in your main HTML document.
-
-var rng_state;
-var rng_pool;
-var rng_pptr;
-
-// Mix in a 32-bit integer into the pool
-function rng_seed_int(x) {
-  rng_pool[rng_pptr++] ^= x & 255;
-  rng_pool[rng_pptr++] ^= (x >> 8) & 255;
-  rng_pool[rng_pptr++] ^= (x >> 16) & 255;
-  rng_pool[rng_pptr++] ^= (x >> 24) & 255;
-  if(rng_pptr >= rng_psize) rng_pptr -= rng_psize;
-}
-
-// Mix in the current time (w/milliseconds) into the pool
-function rng_seed_time() {
-  rng_seed_int(new Date().getTime());
-}
-
-// Initialize the pool with junk if needed.
-if(rng_pool == null) {
-  rng_pool = new Array();
-  rng_pptr = 0;
-  var t;
-  if(window.crypto && window.crypto.getRandomValues) {
-    // Use webcrypto if available
-    var ua = new Uint8Array(32);
-    window.crypto.getRandomValues(ua);
-    for(t = 0; t < 32; ++t)
-      rng_pool[rng_pptr++] = ua[t];
-  }
-  if(navigator.appName == "Netscape" && navigator.appVersion < "5" && window.crypto) {
-    // Extract entropy (256 bits) from NS4 RNG if available
-    var z = window.crypto.random(32);
-    for(t = 0; t < z.length; ++t)
-      rng_pool[rng_pptr++] = z.charCodeAt(t) & 255;
-  }  
-  while(rng_pptr < rng_psize) {  // extract some randomness from Math.random()
-    t = Math.floor(65536 * Math.random());
-    rng_pool[rng_pptr++] = t >>> 8;
-    rng_pool[rng_pptr++] = t & 255;
-  }
-  rng_pptr = 0;
-  rng_seed_time();
-  //rng_seed_int(window.screenX);
-  //rng_seed_int(window.screenY);
-}
-
-function rng_get_byte() {
-  if(rng_state == null) {
-    rng_seed_time();
-    rng_state = prng_newstate();
-    rng_state.init(rng_pool);
-    for(rng_pptr = 0; rng_pptr < rng_pool.length; ++rng_pptr)
-      rng_pool[rng_pptr] = 0;
-    rng_pptr = 0;
-    //rng_pool = null;
-  }
-  // TODO: allow reseeding after first request
-  return rng_state.next();
-}
-
-function rng_get_bytes(ba) {
-  var i;
-  for(i = 0; i < ba.length; ++i) ba[i] = rng_get_byte();
-}
-
-function SecureRandom() {}
-
-SecureRandom.prototype.nextBytes = rng_get_bytes;
-
-/*! (c) Tom Wu | http://www-cs-students.stanford.edu/~tjw/jsbn/
- */
-// Depends on jsbn.js and rng.js
-
-// Version 1.1: support utf-8 encoding in pkcs1pad2
-
-// convert a (hex) string to a bignum object
-function parseBigInt(str,r) {
-  return new BigInteger(str,r);
-}
-
-function linebrk(s,n) {
-  var ret = "";
-  var i = 0;
-  while(i + n < s.length) {
-    ret += s.substring(i,i+n) + "\n";
-    i += n;
-  }
-  return ret + s.substring(i,s.length);
-}
-
-function byte2Hex(b) {
-  if(b < 0x10)
-    return "0" + b.toString(16);
-  else
-    return b.toString(16);
-}
-
-// PKCS#1 (type 2, random) pad input string s to n bytes, and return a bigint
-function pkcs1pad2(s,n) {
-  if(n < s.length + 11) { // TODO: fix for utf-8
-    alert("Message too long for RSA");
-    return null;
-  }
-  var ba = new Array();
-  var i = s.length - 1;
-  while(i >= 0 && n > 0) {
-    var c = s.charCodeAt(i--);
-    if(c < 128) { // encode using utf-8
-      ba[--n] = c;
-    }
-    else if((c > 127) && (c < 2048)) {
-      ba[--n] = (c & 63) | 128;
-      ba[--n] = (c >> 6) | 192;
-    }
-    else {
-      ba[--n] = (c & 63) | 128;
-      ba[--n] = ((c >> 6) & 63) | 128;
-      ba[--n] = (c >> 12) | 224;
-    }
-  }
-  ba[--n] = 0;
-  var rng = new SecureRandom();
-  var x = new Array();
-  while(n > 2) { // random non-zero pad
-    x[0] = 0;
-    while(x[0] == 0) rng.nextBytes(x);
-    ba[--n] = x[0];
-  }
-  ba[--n] = 2;
-  ba[--n] = 0;
-  return new BigInteger(ba);
-}
-
-// PKCS#1 (OAEP) mask generation function
-function oaep_mgf1_arr(seed, len, hash)
-{
-    var mask = '', i = 0;
-
-    while (mask.length < len)
-    {
-        mask += hash(String.fromCharCode.apply(String, seed.concat([
-                (i & 0xff000000) >> 24,
-                (i & 0x00ff0000) >> 16,
-                (i & 0x0000ff00) >> 8,
-                i & 0x000000ff])));
-        i += 1;
-    }
-
-    return mask;
-}
-
-/**
- * PKCS#1 (OAEP) pad input string s to n bytes, and return a bigint
- * @name oaep_pad
- * @param s raw string of message
- * @param n key length of RSA key
- * @param hash JavaScript function to calculate raw hash value from raw string or algorithm name (ex. "SHA1") 
- * @param hashLen byte length of resulted hash value (ex. 20 for SHA1)
- * @return {BigInteger} BigInteger object of resulted PKCS#1 OAEP padded message
- * @description
- * This function calculates OAEP padded message from original message.<br/>
- * NOTE: Since jsrsasign 6.2.0, 'hash' argument can accept an algorithm name such as "sha1".
- * @example
- * oaep_pad("aaa", 128) &rarr; big integer object // SHA-1 by default
- * oaep_pad("aaa", 128, function(s) {...}, 20);
- * oaep_pad("aaa", 128, "sha1");
- */
-function oaep_pad(s, n, hash, hashLen) {
-    var MD = KJUR.crypto.MessageDigest;
-    var Util = KJUR.crypto.Util;
-    var algName = null;
-
-    if (!hash) hash = "sha1";
-
-    if (typeof hash === "string") {
-	algName = MD.getCanonicalAlgName(hash);
-	hashLen = MD.getHashLength(algName);
-        hash = function(s) { return hextorstr(Util.hashString(s, algName)); };
-    }
-
-    if (s.length + 2 * hashLen + 2 > n) {
-        throw "Message too long for RSA";
-    }
-
-    var PS = '', i;
-
-    for (i = 0; i < n - s.length - 2 * hashLen - 2; i += 1) {
-        PS += '\x00';
-    }
-
-    var DB = hash('') + PS + '\x01' + s;
-    var seed = new Array(hashLen);
-    new SecureRandom().nextBytes(seed);
-    
-    var dbMask = oaep_mgf1_arr(seed, DB.length, hash);
-    var maskedDB = [];
-
-    for (i = 0; i < DB.length; i += 1) {
-        maskedDB[i] = DB.charCodeAt(i) ^ dbMask.charCodeAt(i);
-    }
-
-    var seedMask = oaep_mgf1_arr(maskedDB, seed.length, hash);
-    var maskedSeed = [0];
-
-    for (i = 0; i < seed.length; i += 1) {
-        maskedSeed[i + 1] = seed[i] ^ seedMask.charCodeAt(i);
-    }
-
-    return new BigInteger(maskedSeed.concat(maskedDB));
-}
-
-// "empty" RSA key constructor
-function RSAKey() {
-  this.n = null;
-  this.e = 0;
-  this.d = null;
-  this.p = null;
-  this.q = null;
-  this.dmp1 = null;
-  this.dmq1 = null;
-  this.coeff = null;
-}
-
-// Set the public key fields N and e from hex strings
-function RSASetPublic(N,E) {
-  this.isPublic = true;
-  if (typeof N !== "string") 
-  {
-    this.n = N;
-    this.e = E;
-  }
-  else if(N != null && E != null && N.length > 0 && E.length > 0) {
-    this.n = parseBigInt(N,16);
-    this.e = parseInt(E,16);
-  }
-  else
-    alert("Invalid RSA public key");
-}
-
-// Perform raw public operation on "x": return x^e (mod n)
-function RSADoPublic(x) {
-  return x.modPowInt(this.e, this.n);
-}
-
-// Return the PKCS#1 RSA encryption of "text" as an even-length hex string
-function RSAEncrypt(text) {
-  var m = pkcs1pad2(text,(this.n.bitLength()+7)>>3);
-  if(m == null) return null;
-  var c = this.doPublic(m);
-  if(c == null) return null;
-  var h = c.toString(16);
-  if((h.length & 1) == 0) return h; else return "0" + h;
-}
-
-// Return the PKCS#1 OAEP RSA encryption of "text" as an even-length hex string
-function RSAEncryptOAEP(text, hash, hashLen) {
-  var m = oaep_pad(text, (this.n.bitLength() + 7) >> 3, hash, hashLen);
-  if(m == null) return null;
-  var c = this.doPublic(m);
-  if(c == null) return null;
-  var h = c.toString(16);
-  if((h.length & 1) == 0) return h; else return "0" + h;
-}
-
-// Return the PKCS#1 RSA encryption of "text" as a Base64-encoded string
-//function RSAEncryptB64(text) {
-//  var h = this.encrypt(text);
-//  if(h) return hex2b64(h); else return null;
-//}
-
-// protected
-RSAKey.prototype.doPublic = RSADoPublic;
-
-// public
-RSAKey.prototype.setPublic = RSASetPublic;
-RSAKey.prototype.encrypt = RSAEncrypt;
-RSAKey.prototype.encryptOAEP = RSAEncryptOAEP;
-//RSAKey.prototype.encrypt_b64 = RSAEncryptB64;
-
-RSAKey.prototype.type = "RSA";
-
-/*! (c) Tom Wu | http://www-cs-students.stanford.edu/~tjw/jsbn/
- */
-// Depends on rsa.js and jsbn2.js
-
-// Version 1.1: support utf-8 decoding in pkcs1unpad2
-
-// Undo PKCS#1 (type 2, random) padding and, if valid, return the plaintext
-function pkcs1unpad2(d,n) {
-  var b = d.toByteArray();
-  var i = 0;
-  while(i < b.length && b[i] == 0) ++i;
-  if(b.length-i != n-1 || b[i] != 2)
-    return null;
-  ++i;
-  while(b[i] != 0)
-    if(++i >= b.length) return null;
-  var ret = "";
-  while(++i < b.length) {
-    var c = b[i] & 255;
-    if(c < 128) { // utf-8 decode
-      ret += String.fromCharCode(c);
-    }
-    else if((c > 191) && (c < 224)) {
-      ret += String.fromCharCode(((c & 31) << 6) | (b[i+1] & 63));
-      ++i;
-    }
-    else {
-      ret += String.fromCharCode(((c & 15) << 12) | ((b[i+1] & 63) << 6) | (b[i+2] & 63));
-      i += 2;
-    }
-  }
-  return ret;
-}
-
-// PKCS#1 (OAEP) mask generation function
-function oaep_mgf1_str(seed, len, hash)
-{
-    var mask = '', i = 0;
-
-    while (mask.length < len)
-    {
-        mask += hash(seed + String.fromCharCode.apply(String, [
-                (i & 0xff000000) >> 24,
-                (i & 0x00ff0000) >> 16,
-                (i & 0x0000ff00) >> 8,
-                i & 0x000000ff]));
-        i += 1;
-    }
-
-    return mask;
-}
-
-/**
- * Undo PKCS#1 (OAEP) padding and, if valid, return the plaintext
- * @name oaep_unpad
- * @param {BigInteger} d BigInteger object of OAEP padded message
- * @param n byte length of RSA key (i.e. 128 when RSA 1024bit)
- * @param hash JavaScript function to calculate raw hash value from raw string or algorithm name (ex. "SHA1") 
- * @param hashLen byte length of resulted hash value (i.e. 20 for SHA1)
- * @return {String} raw string of OAEP unpadded message
- * @description
- * This function do unpadding OAEP padded message then returns an original message.<br/>
- * NOTE: Since jsrsasign 6.2.0, 'hash' argument can accept an algorithm name such as "sha1".
- * @example
- * // DEFAULT(SHA1)
- * bi1 = oaep_pad("aaa", 128);
- * oaep_unpad(bi1, 128) &rarr; "aaa" // SHA-1 by default
- */
-function oaep_unpad(d, n, hash, hashLen) {
-    var MD = KJUR.crypto.MessageDigest;
-    var Util = KJUR.crypto.Util;
-    var algName = null;
-
-    if (!hash) hash = "sha1";
-
-    if (typeof hash === "string") {
-	algName = MD.getCanonicalAlgName(hash);
-	hashLen = MD.getHashLength(algName);
-        hash = function(s) { return hextorstr(Util.hashString(s, algName)); };
-    }
-
-    d = d.toByteArray();
-
-    var i;
-
-    for (i = 0; i < d.length; i += 1) {
-        d[i] &= 0xff;
-    }
-
-    while (d.length < n) {
-        d.unshift(0);
-    }
-
-    d = String.fromCharCode.apply(String, d);
-
-    if (d.length < 2 * hashLen + 2) {
-        throw "Cipher too short";
-    }
-
-    var maskedSeed = d.substr(1, hashLen)
-    var maskedDB = d.substr(hashLen + 1);
-
-    var seedMask = oaep_mgf1_str(maskedDB, hashLen, hash);
-    var seed = [], i;
-
-    for (i = 0; i < maskedSeed.length; i += 1) {
-        seed[i] = maskedSeed.charCodeAt(i) ^ seedMask.charCodeAt(i);
-    }
-
-    var dbMask = oaep_mgf1_str(String.fromCharCode.apply(String, seed),
-                               d.length - hashLen, hash);
-
-    var DB = [];
-
-    for (i = 0; i < maskedDB.length; i += 1) {
-        DB[i] = maskedDB.charCodeAt(i) ^ dbMask.charCodeAt(i);
-    }
-
-    DB = String.fromCharCode.apply(String, DB);
-
-    if (DB.substr(0, hashLen) !== hash('')) {
-        throw "Hash mismatch";
-    }
-
-    DB = DB.substr(hashLen);
-
-    var first_one = DB.indexOf('\x01');
-    var last_zero = (first_one != -1) ? DB.substr(0, first_one).lastIndexOf('\x00') : -1;
-
-    if (last_zero + 1 != first_one) {
-        throw "Malformed data";
-    }
-
-    return DB.substr(first_one + 1);
-}
-
-// Set the private key fields N, e, and d from hex strings
-function RSASetPrivate(N,E,D) {
-  this.isPrivate = true;
-  if (typeof N !== "string")
-  {
-    this.n = N;
-    this.e = E;
-    this.d = D;
-  }
-  else if(N != null && E != null && N.length > 0 && E.length > 0) {
-    this.n = parseBigInt(N,16);
-    this.e = parseInt(E,16);
-    this.d = parseBigInt(D,16);
-  }
-  else
-    alert("Invalid RSA private key");
-}
-
-// Set the private key fields N, e, d and CRT params from hex strings
-function RSASetPrivateEx(N,E,D,P,Q,DP,DQ,C) {
-  this.isPrivate = true;
-  if (N == null) throw "RSASetPrivateEx N == null";
-  if (E == null) throw "RSASetPrivateEx E == null";
-  if (N.length == 0) throw "RSASetPrivateEx N.length == 0";
-  if (E.length == 0) throw "RSASetPrivateEx E.length == 0";
-
-  if (N != null && E != null && N.length > 0 && E.length > 0) {
-    this.n = parseBigInt(N,16);
-    this.e = parseInt(E,16);
-    this.d = parseBigInt(D,16);
-    this.p = parseBigInt(P,16);
-    this.q = parseBigInt(Q,16);
-    this.dmp1 = parseBigInt(DP,16);
-    this.dmq1 = parseBigInt(DQ,16);
-    this.coeff = parseBigInt(C,16);
-  } else {
-    alert("Invalid RSA private key in RSASetPrivateEx");
-  }
-}
-
-// Generate a new random private key B bits long, using public expt E
-function RSAGenerate(B,E) {
-  var rng = new SecureRandom();
-  var qs = B>>1;
-  this.e = parseInt(E,16);
-  var ee = new BigInteger(E,16);
-  for(;;) {
-    for(;;) {
-      this.p = new BigInteger(B-qs,1,rng);
-      if(this.p.subtract(BigInteger.ONE).gcd(ee).compareTo(BigInteger.ONE) == 0 && this.p.isProbablePrime(10)) break;
-    }
-    for(;;) {
-      this.q = new BigInteger(qs,1,rng);
-      if(this.q.subtract(BigInteger.ONE).gcd(ee).compareTo(BigInteger.ONE) == 0 && this.q.isProbablePrime(10)) break;
-    }
-    if(this.p.compareTo(this.q) <= 0) {
-      var t = this.p;
-      this.p = this.q;
-      this.q = t;
-    }
-    var p1 = this.p.subtract(BigInteger.ONE);	// p1 = p - 1
-    var q1 = this.q.subtract(BigInteger.ONE);	// q1 = q - 1
-    var phi = p1.multiply(q1);
-    if(phi.gcd(ee).compareTo(BigInteger.ONE) == 0) {
-      this.n = this.p.multiply(this.q);	// this.n = p * q
-      this.d = ee.modInverse(phi);	// this.d = 
-      this.dmp1 = this.d.mod(p1);	// this.dmp1 = d mod (p - 1)
-      this.dmq1 = this.d.mod(q1);	// this.dmq1 = d mod (q - 1)
-      this.coeff = this.q.modInverse(this.p);	// this.coeff = (q ^ -1) mod p
-      break;
-    }
-  }
-  this.isPrivate = true;
-}
-
-// Perform raw private operation on "x": return x^d (mod n)
-function RSADoPrivate(x) {
-  if(this.p == null || this.q == null)
-    return x.modPow(this.d, this.n);
-
-  // TODO: re-calculate any missing CRT params
-  var xp = x.mod(this.p).modPow(this.dmp1, this.p); // xp=cp?
-  var xq = x.mod(this.q).modPow(this.dmq1, this.q); // xq=cq?
-
-  while(xp.compareTo(xq) < 0)
-    xp = xp.add(this.p);
-  // NOTE:
-  // xp.subtract(xq) => cp -cq
-  // xp.subtract(xq).multiply(this.coeff).mod(this.p) => (cp - cq) * u mod p = h
-  // xp.subtract(xq).multiply(this.coeff).mod(this.p).multiply(this.q).add(xq) => cq + (h * q) = M
-  return xp.subtract(xq).multiply(this.coeff).mod(this.p).multiply(this.q).add(xq);
-}
-
-// Return the PKCS#1 RSA decryption of "ctext".
-// "ctext" is an even-length hex string and the output is a plain string.
-function RSADecrypt(ctext) {
-  var c = parseBigInt(ctext, 16);
-  var m = this.doPrivate(c);
-  if(m == null) return null;
-  return pkcs1unpad2(m, (this.n.bitLength()+7)>>3);
-}
-
-// Return the PKCS#1 OAEP RSA decryption of "ctext".
-// "ctext" is an even-length hex string and the output is a plain string.
-function RSADecryptOAEP(ctext, hash, hashLen) {
-  var c = parseBigInt(ctext, 16);
-  var m = this.doPrivate(c);
-  if(m == null) return null;
-  return oaep_unpad(m, (this.n.bitLength()+7)>>3, hash, hashLen);
-}
-
-// Return the PKCS#1 RSA decryption of "ctext".
-// "ctext" is a Base64-encoded string and the output is a plain string.
-//function RSAB64Decrypt(ctext) {
-//  var h = b64tohex(ctext);
-//  if(h) return this.decrypt(h); else return null;
-//}
-
-// protected
-RSAKey.prototype.doPrivate = RSADoPrivate;
-
-// public
-RSAKey.prototype.setPrivate = RSASetPrivate;
-RSAKey.prototype.setPrivateEx = RSASetPrivateEx;
-RSAKey.prototype.generate = RSAGenerate;
-RSAKey.prototype.decrypt = RSADecrypt;
-RSAKey.prototype.decryptOAEP = RSADecryptOAEP;
-//RSAKey.prototype.b64_decrypt = RSAB64Decrypt;
-
-/*
-CryptoJS v3.1.2
-code.google.com/p/crypto-js
-(c) 2009-2013 by Jeff Mott. All rights reserved.
-code.google.com/p/crypto-js/wiki/License
-*/
-(function () {
-    // Shortcuts
-    var C = CryptoJS;
-    var C_lib = C.lib;
     var WordArray = C_lib.WordArray;
     var Hasher = C_lib.Hasher;
     var C_algo = C.algo;
@@ -16140,6 +15592,775 @@ code.google.com/p/crypto-js/wiki/License
      */
     C.HmacSHA384 = SHA512._createHmacHelper(SHA384);
 }());
+
+/*
+CryptoJS v3.1.2
+code.google.com/p/crypto-js
+(c) 2009-2013 by Jeff Mott. All rights reserved.
+code.google.com/p/crypto-js/wiki/License
+*/
+(function () {
+    // Shortcuts
+    var C = CryptoJS;
+    var C_lib = C.lib;
+    var BlockCipher = C_lib.BlockCipher;
+    var C_algo = C.algo;
+
+    // Lookup tables
+    var SBOX = [];
+    var INV_SBOX = [];
+    var SUB_MIX_0 = [];
+    var SUB_MIX_1 = [];
+    var SUB_MIX_2 = [];
+    var SUB_MIX_3 = [];
+    var INV_SUB_MIX_0 = [];
+    var INV_SUB_MIX_1 = [];
+    var INV_SUB_MIX_2 = [];
+    var INV_SUB_MIX_3 = [];
+
+    // Compute lookup tables
+    (function () {
+        // Compute double table
+        var d = [];
+        for (var i = 0; i < 256; i++) {
+            if (i < 128) {
+                d[i] = i << 1;
+            } else {
+                d[i] = (i << 1) ^ 0x11b;
+            }
+        }
+
+        // Walk GF(2^8)
+        var x = 0;
+        var xi = 0;
+        for (var i = 0; i < 256; i++) {
+            // Compute sbox
+            var sx = xi ^ (xi << 1) ^ (xi << 2) ^ (xi << 3) ^ (xi << 4);
+            sx = (sx >>> 8) ^ (sx & 0xff) ^ 0x63;
+            SBOX[x] = sx;
+            INV_SBOX[sx] = x;
+
+            // Compute multiplication
+            var x2 = d[x];
+            var x4 = d[x2];
+            var x8 = d[x4];
+
+            // Compute sub bytes, mix columns tables
+            var t = (d[sx] * 0x101) ^ (sx * 0x1010100);
+            SUB_MIX_0[x] = (t << 24) | (t >>> 8);
+            SUB_MIX_1[x] = (t << 16) | (t >>> 16);
+            SUB_MIX_2[x] = (t << 8)  | (t >>> 24);
+            SUB_MIX_3[x] = t;
+
+            // Compute inv sub bytes, inv mix columns tables
+            var t = (x8 * 0x1010101) ^ (x4 * 0x10001) ^ (x2 * 0x101) ^ (x * 0x1010100);
+            INV_SUB_MIX_0[sx] = (t << 24) | (t >>> 8);
+            INV_SUB_MIX_1[sx] = (t << 16) | (t >>> 16);
+            INV_SUB_MIX_2[sx] = (t << 8)  | (t >>> 24);
+            INV_SUB_MIX_3[sx] = t;
+
+            // Compute next counter
+            if (!x) {
+                x = xi = 1;
+            } else {
+                x = x2 ^ d[d[d[x8 ^ x2]]];
+                xi ^= d[d[xi]];
+            }
+        }
+    }());
+
+    // Precomputed Rcon lookup
+    var RCON = [0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36];
+
+    /**
+     * AES block cipher algorithm.
+     */
+    var AES = C_algo.AES = BlockCipher.extend({
+        _doReset: function () {
+            // Shortcuts
+            var key = this._key;
+            var keyWords = key.words;
+            var keySize = key.sigBytes / 4;
+
+            // Compute number of rounds
+            var nRounds = this._nRounds = keySize + 6
+
+            // Compute number of key schedule rows
+            var ksRows = (nRounds + 1) * 4;
+
+            // Compute key schedule
+            var keySchedule = this._keySchedule = [];
+            for (var ksRow = 0; ksRow < ksRows; ksRow++) {
+                if (ksRow < keySize) {
+                    keySchedule[ksRow] = keyWords[ksRow];
+                } else {
+                    var t = keySchedule[ksRow - 1];
+
+                    if (!(ksRow % keySize)) {
+                        // Rot word
+                        t = (t << 8) | (t >>> 24);
+
+                        // Sub word
+                        t = (SBOX[t >>> 24] << 24) | (SBOX[(t >>> 16) & 0xff] << 16) | (SBOX[(t >>> 8) & 0xff] << 8) | SBOX[t & 0xff];
+
+                        // Mix Rcon
+                        t ^= RCON[(ksRow / keySize) | 0] << 24;
+                    } else if (keySize > 6 && ksRow % keySize == 4) {
+                        // Sub word
+                        t = (SBOX[t >>> 24] << 24) | (SBOX[(t >>> 16) & 0xff] << 16) | (SBOX[(t >>> 8) & 0xff] << 8) | SBOX[t & 0xff];
+                    }
+
+                    keySchedule[ksRow] = keySchedule[ksRow - keySize] ^ t;
+                }
+            }
+
+            // Compute inv key schedule
+            var invKeySchedule = this._invKeySchedule = [];
+            for (var invKsRow = 0; invKsRow < ksRows; invKsRow++) {
+                var ksRow = ksRows - invKsRow;
+
+                if (invKsRow % 4) {
+                    var t = keySchedule[ksRow];
+                } else {
+                    var t = keySchedule[ksRow - 4];
+                }
+
+                if (invKsRow < 4 || ksRow <= 4) {
+                    invKeySchedule[invKsRow] = t;
+                } else {
+                    invKeySchedule[invKsRow] = INV_SUB_MIX_0[SBOX[t >>> 24]] ^ INV_SUB_MIX_1[SBOX[(t >>> 16) & 0xff]] ^
+                                               INV_SUB_MIX_2[SBOX[(t >>> 8) & 0xff]] ^ INV_SUB_MIX_3[SBOX[t & 0xff]];
+                }
+            }
+        },
+
+        encryptBlock: function (M, offset) {
+            this._doCryptBlock(M, offset, this._keySchedule, SUB_MIX_0, SUB_MIX_1, SUB_MIX_2, SUB_MIX_3, SBOX);
+        },
+
+        decryptBlock: function (M, offset) {
+            // Swap 2nd and 4th rows
+            var t = M[offset + 1];
+            M[offset + 1] = M[offset + 3];
+            M[offset + 3] = t;
+
+            this._doCryptBlock(M, offset, this._invKeySchedule, INV_SUB_MIX_0, INV_SUB_MIX_1, INV_SUB_MIX_2, INV_SUB_MIX_3, INV_SBOX);
+
+            // Inv swap 2nd and 4th rows
+            var t = M[offset + 1];
+            M[offset + 1] = M[offset + 3];
+            M[offset + 3] = t;
+        },
+
+        _doCryptBlock: function (M, offset, keySchedule, SUB_MIX_0, SUB_MIX_1, SUB_MIX_2, SUB_MIX_3, SBOX) {
+            // Shortcut
+            var nRounds = this._nRounds;
+
+            // Get input, add round key
+            var s0 = M[offset]     ^ keySchedule[0];
+            var s1 = M[offset + 1] ^ keySchedule[1];
+            var s2 = M[offset + 2] ^ keySchedule[2];
+            var s3 = M[offset + 3] ^ keySchedule[3];
+
+            // Key schedule row counter
+            var ksRow = 4;
+
+            // Rounds
+            for (var round = 1; round < nRounds; round++) {
+                // Shift rows, sub bytes, mix columns, add round key
+                var t0 = SUB_MIX_0[s0 >>> 24] ^ SUB_MIX_1[(s1 >>> 16) & 0xff] ^ SUB_MIX_2[(s2 >>> 8) & 0xff] ^ SUB_MIX_3[s3 & 0xff] ^ keySchedule[ksRow++];
+                var t1 = SUB_MIX_0[s1 >>> 24] ^ SUB_MIX_1[(s2 >>> 16) & 0xff] ^ SUB_MIX_2[(s3 >>> 8) & 0xff] ^ SUB_MIX_3[s0 & 0xff] ^ keySchedule[ksRow++];
+                var t2 = SUB_MIX_0[s2 >>> 24] ^ SUB_MIX_1[(s3 >>> 16) & 0xff] ^ SUB_MIX_2[(s0 >>> 8) & 0xff] ^ SUB_MIX_3[s1 & 0xff] ^ keySchedule[ksRow++];
+                var t3 = SUB_MIX_0[s3 >>> 24] ^ SUB_MIX_1[(s0 >>> 16) & 0xff] ^ SUB_MIX_2[(s1 >>> 8) & 0xff] ^ SUB_MIX_3[s2 & 0xff] ^ keySchedule[ksRow++];
+
+                // Update state
+                s0 = t0;
+                s1 = t1;
+                s2 = t2;
+                s3 = t3;
+            }
+
+            // Shift rows, sub bytes, add round key
+            var t0 = ((SBOX[s0 >>> 24] << 24) | (SBOX[(s1 >>> 16) & 0xff] << 16) | (SBOX[(s2 >>> 8) & 0xff] << 8) | SBOX[s3 & 0xff]) ^ keySchedule[ksRow++];
+            var t1 = ((SBOX[s1 >>> 24] << 24) | (SBOX[(s2 >>> 16) & 0xff] << 16) | (SBOX[(s3 >>> 8) & 0xff] << 8) | SBOX[s0 & 0xff]) ^ keySchedule[ksRow++];
+            var t2 = ((SBOX[s2 >>> 24] << 24) | (SBOX[(s3 >>> 16) & 0xff] << 16) | (SBOX[(s0 >>> 8) & 0xff] << 8) | SBOX[s1 & 0xff]) ^ keySchedule[ksRow++];
+            var t3 = ((SBOX[s3 >>> 24] << 24) | (SBOX[(s0 >>> 16) & 0xff] << 16) | (SBOX[(s1 >>> 8) & 0xff] << 8) | SBOX[s2 & 0xff]) ^ keySchedule[ksRow++];
+
+            // Set output
+            M[offset]     = t0;
+            M[offset + 1] = t1;
+            M[offset + 2] = t2;
+            M[offset + 3] = t3;
+        },
+
+        keySize: 256/32
+    });
+
+    /**
+     * Shortcut functions to the cipher's object interface.
+     *
+     * @example
+     *
+     *     var ciphertext = CryptoJS.AES.encrypt(message, key, cfg);
+     *     var plaintext  = CryptoJS.AES.decrypt(ciphertext, key, cfg);
+     */
+    C.AES = BlockCipher._createHelper(AES);
+}());
+
+/*! (c) Tom Wu | http://www-cs-students.stanford.edu/~tjw/jsbn/
+ */
+// Random number generator - requires a PRNG backend, e.g. prng4.js
+
+// For best results, put code like
+// <body onClick='rng_seed_time();' onKeyPress='rng_seed_time();'>
+// in your main HTML document.
+
+var rng_state;
+var rng_pool;
+var rng_pptr;
+
+// Mix in a 32-bit integer into the pool
+function rng_seed_int(x) {
+  rng_pool[rng_pptr++] ^= x & 255;
+  rng_pool[rng_pptr++] ^= (x >> 8) & 255;
+  rng_pool[rng_pptr++] ^= (x >> 16) & 255;
+  rng_pool[rng_pptr++] ^= (x >> 24) & 255;
+  if(rng_pptr >= rng_psize) rng_pptr -= rng_psize;
+}
+
+// Mix in the current time (w/milliseconds) into the pool
+function rng_seed_time() {
+  rng_seed_int(new Date().getTime());
+}
+
+// Initialize the pool with junk if needed.
+if(rng_pool == null) {
+  rng_pool = new Array();
+  rng_pptr = 0;
+  var t;
+  if(window.crypto && window.crypto.getRandomValues) {
+    // Use webcrypto if available
+    var ua = new Uint8Array(32);
+    window.crypto.getRandomValues(ua);
+    for(t = 0; t < 32; ++t)
+      rng_pool[rng_pptr++] = ua[t];
+  }
+  if(navigator.appName == "Netscape" && navigator.appVersion < "5" && window.crypto) {
+    // Extract entropy (256 bits) from NS4 RNG if available
+    var z = window.crypto.random(32);
+    for(t = 0; t < z.length; ++t)
+      rng_pool[rng_pptr++] = z.charCodeAt(t) & 255;
+  }  
+  while(rng_pptr < rng_psize) {  // extract some randomness from Math.random()
+    t = Math.floor(65536 * Math.random());
+    rng_pool[rng_pptr++] = t >>> 8;
+    rng_pool[rng_pptr++] = t & 255;
+  }
+  rng_pptr = 0;
+  rng_seed_time();
+  //rng_seed_int(window.screenX);
+  //rng_seed_int(window.screenY);
+}
+
+function rng_get_byte() {
+  if(rng_state == null) {
+    rng_seed_time();
+    rng_state = prng_newstate();
+    rng_state.init(rng_pool);
+    for(rng_pptr = 0; rng_pptr < rng_pool.length; ++rng_pptr)
+      rng_pool[rng_pptr] = 0;
+    rng_pptr = 0;
+    //rng_pool = null;
+  }
+  // TODO: allow reseeding after first request
+  return rng_state.next();
+}
+
+function rng_get_bytes(ba) {
+  var i;
+  for(i = 0; i < ba.length; ++i) ba[i] = rng_get_byte();
+}
+
+function SecureRandom() {}
+
+SecureRandom.prototype.nextBytes = rng_get_bytes;
+
+/*! (c) Tom Wu | http://www-cs-students.stanford.edu/~tjw/jsbn/
+ */
+// Depends on jsbn.js and rng.js
+
+// Version 1.1: support utf-8 encoding in pkcs1pad2
+
+// convert a (hex) string to a bignum object
+function parseBigInt(str,r) {
+  return new BigInteger(str,r);
+}
+
+function linebrk(s,n) {
+  var ret = "";
+  var i = 0;
+  while(i + n < s.length) {
+    ret += s.substring(i,i+n) + "\n";
+    i += n;
+  }
+  return ret + s.substring(i,s.length);
+}
+
+function byte2Hex(b) {
+  if(b < 0x10)
+    return "0" + b.toString(16);
+  else
+    return b.toString(16);
+}
+
+// PKCS#1 (type 2, random) pad input string s to n bytes, and return a bigint
+function pkcs1pad2(s,n) {
+  if(n < s.length + 11) { // TODO: fix for utf-8
+    alert("Message too long for RSA");
+    return null;
+  }
+  var ba = new Array();
+  var i = s.length - 1;
+  while(i >= 0 && n > 0) {
+    var c = s.charCodeAt(i--);
+    if(c < 128) { // encode using utf-8
+      ba[--n] = c;
+    }
+    else if((c > 127) && (c < 2048)) {
+      ba[--n] = (c & 63) | 128;
+      ba[--n] = (c >> 6) | 192;
+    }
+    else {
+      ba[--n] = (c & 63) | 128;
+      ba[--n] = ((c >> 6) & 63) | 128;
+      ba[--n] = (c >> 12) | 224;
+    }
+  }
+  ba[--n] = 0;
+  var rng = new SecureRandom();
+  var x = new Array();
+  while(n > 2) { // random non-zero pad
+    x[0] = 0;
+    while(x[0] == 0) rng.nextBytes(x);
+    ba[--n] = x[0];
+  }
+  ba[--n] = 2;
+  ba[--n] = 0;
+  return new BigInteger(ba);
+}
+
+// PKCS#1 (OAEP) mask generation function
+function oaep_mgf1_arr(seed, len, hash)
+{
+    var mask = '', i = 0;
+
+    while (mask.length < len)
+    {
+        mask += hash(String.fromCharCode.apply(String, seed.concat([
+                (i & 0xff000000) >> 24,
+                (i & 0x00ff0000) >> 16,
+                (i & 0x0000ff00) >> 8,
+                i & 0x000000ff])));
+        i += 1;
+    }
+
+    return mask;
+}
+
+/**
+ * PKCS#1 (OAEP) pad input string s to n bytes, and return a bigint
+ * @name oaep_pad
+ * @param s raw string of message
+ * @param n key length of RSA key
+ * @param hash JavaScript function to calculate raw hash value from raw string or algorithm name (ex. "SHA1") 
+ * @param hashLen byte length of resulted hash value (ex. 20 for SHA1)
+ * @return {BigInteger} BigInteger object of resulted PKCS#1 OAEP padded message
+ * @description
+ * This function calculates OAEP padded message from original message.<br/>
+ * NOTE: Since jsrsasign 6.2.0, 'hash' argument can accept an algorithm name such as "sha1".
+ * @example
+ * oaep_pad("aaa", 128) &rarr; big integer object // SHA-1 by default
+ * oaep_pad("aaa", 128, function(s) {...}, 20);
+ * oaep_pad("aaa", 128, "sha1");
+ */
+function oaep_pad(s, n, hash, hashLen) {
+    var MD = KJUR.crypto.MessageDigest;
+    var Util = KJUR.crypto.Util;
+    var algName = null;
+
+    if (!hash) hash = "sha1";
+
+    if (typeof hash === "string") {
+	algName = MD.getCanonicalAlgName(hash);
+	hashLen = MD.getHashLength(algName);
+        hash = function(s) { return hextorstr(Util.hashString(s, algName)); };
+    }
+
+    if (s.length + 2 * hashLen + 2 > n) {
+        throw "Message too long for RSA";
+    }
+
+    var PS = '', i;
+
+    for (i = 0; i < n - s.length - 2 * hashLen - 2; i += 1) {
+        PS += '\x00';
+    }
+
+    var DB = hash('') + PS + '\x01' + s;
+    var seed = new Array(hashLen);
+    new SecureRandom().nextBytes(seed);
+    
+    var dbMask = oaep_mgf1_arr(seed, DB.length, hash);
+    var maskedDB = [];
+
+    for (i = 0; i < DB.length; i += 1) {
+        maskedDB[i] = DB.charCodeAt(i) ^ dbMask.charCodeAt(i);
+    }
+
+    var seedMask = oaep_mgf1_arr(maskedDB, seed.length, hash);
+    var maskedSeed = [0];
+
+    for (i = 0; i < seed.length; i += 1) {
+        maskedSeed[i + 1] = seed[i] ^ seedMask.charCodeAt(i);
+    }
+
+    return new BigInteger(maskedSeed.concat(maskedDB));
+}
+
+// "empty" RSA key constructor
+function RSAKey() {
+  this.n = null;
+  this.e = 0;
+  this.d = null;
+  this.p = null;
+  this.q = null;
+  this.dmp1 = null;
+  this.dmq1 = null;
+  this.coeff = null;
+}
+
+// Set the public key fields N and e from hex strings
+function RSASetPublic(N,E) {
+  this.isPublic = true;
+  if (typeof N !== "string") 
+  {
+    this.n = N;
+    this.e = E;
+  }
+  else if(N != null && E != null && N.length > 0 && E.length > 0) {
+    this.n = parseBigInt(N,16);
+    this.e = parseInt(E,16);
+  }
+  else
+    alert("Invalid RSA public key");
+}
+
+// Perform raw public operation on "x": return x^e (mod n)
+function RSADoPublic(x) {
+  return x.modPowInt(this.e, this.n);
+}
+
+// Return the PKCS#1 RSA encryption of "text" as an even-length hex string
+function RSAEncrypt(text) {
+  var m = pkcs1pad2(text,(this.n.bitLength()+7)>>3);
+  if(m == null) return null;
+  var c = this.doPublic(m);
+  if(c == null) return null;
+  var h = c.toString(16);
+  if((h.length & 1) == 0) return h; else return "0" + h;
+}
+
+// Return the PKCS#1 OAEP RSA encryption of "text" as an even-length hex string
+function RSAEncryptOAEP(text, hash, hashLen) {
+  var m = oaep_pad(text, (this.n.bitLength() + 7) >> 3, hash, hashLen);
+  if(m == null) return null;
+  var c = this.doPublic(m);
+  if(c == null) return null;
+  var h = c.toString(16);
+  if((h.length & 1) == 0) return h; else return "0" + h;
+}
+
+// Return the PKCS#1 RSA encryption of "text" as a Base64-encoded string
+//function RSAEncryptB64(text) {
+//  var h = this.encrypt(text);
+//  if(h) return hex2b64(h); else return null;
+//}
+
+// protected
+RSAKey.prototype.doPublic = RSADoPublic;
+
+// public
+RSAKey.prototype.setPublic = RSASetPublic;
+RSAKey.prototype.encrypt = RSAEncrypt;
+RSAKey.prototype.encryptOAEP = RSAEncryptOAEP;
+//RSAKey.prototype.encrypt_b64 = RSAEncryptB64;
+
+RSAKey.prototype.type = "RSA";
+
+/*! (c) Tom Wu | http://www-cs-students.stanford.edu/~tjw/jsbn/
+ */
+// Depends on rsa.js and jsbn2.js
+
+// Version 1.1: support utf-8 decoding in pkcs1unpad2
+
+// Undo PKCS#1 (type 2, random) padding and, if valid, return the plaintext
+function pkcs1unpad2(d,n) {
+  var b = d.toByteArray();
+  var i = 0;
+  while(i < b.length && b[i] == 0) ++i;
+  if(b.length-i != n-1 || b[i] != 2)
+    return null;
+  ++i;
+  while(b[i] != 0)
+    if(++i >= b.length) return null;
+  var ret = "";
+  while(++i < b.length) {
+    var c = b[i] & 255;
+    if(c < 128) { // utf-8 decode
+      ret += String.fromCharCode(c);
+    }
+    else if((c > 191) && (c < 224)) {
+      ret += String.fromCharCode(((c & 31) << 6) | (b[i+1] & 63));
+      ++i;
+    }
+    else {
+      ret += String.fromCharCode(((c & 15) << 12) | ((b[i+1] & 63) << 6) | (b[i+2] & 63));
+      i += 2;
+    }
+  }
+  return ret;
+}
+
+// PKCS#1 (OAEP) mask generation function
+function oaep_mgf1_str(seed, len, hash)
+{
+    var mask = '', i = 0;
+
+    while (mask.length < len)
+    {
+        mask += hash(seed + String.fromCharCode.apply(String, [
+                (i & 0xff000000) >> 24,
+                (i & 0x00ff0000) >> 16,
+                (i & 0x0000ff00) >> 8,
+                i & 0x000000ff]));
+        i += 1;
+    }
+
+    return mask;
+}
+
+/**
+ * Undo PKCS#1 (OAEP) padding and, if valid, return the plaintext
+ * @name oaep_unpad
+ * @param {BigInteger} d BigInteger object of OAEP padded message
+ * @param n byte length of RSA key (i.e. 128 when RSA 1024bit)
+ * @param hash JavaScript function to calculate raw hash value from raw string or algorithm name (ex. "SHA1") 
+ * @param hashLen byte length of resulted hash value (i.e. 20 for SHA1)
+ * @return {String} raw string of OAEP unpadded message
+ * @description
+ * This function do unpadding OAEP padded message then returns an original message.<br/>
+ * NOTE: Since jsrsasign 6.2.0, 'hash' argument can accept an algorithm name such as "sha1".
+ * @example
+ * // DEFAULT(SHA1)
+ * bi1 = oaep_pad("aaa", 128);
+ * oaep_unpad(bi1, 128) &rarr; "aaa" // SHA-1 by default
+ */
+function oaep_unpad(d, n, hash, hashLen) {
+    var MD = KJUR.crypto.MessageDigest;
+    var Util = KJUR.crypto.Util;
+    var algName = null;
+
+    if (!hash) hash = "sha1";
+
+    if (typeof hash === "string") {
+	algName = MD.getCanonicalAlgName(hash);
+	hashLen = MD.getHashLength(algName);
+        hash = function(s) { return hextorstr(Util.hashString(s, algName)); };
+    }
+
+    d = d.toByteArray();
+
+    var i;
+
+    for (i = 0; i < d.length; i += 1) {
+        d[i] &= 0xff;
+    }
+
+    while (d.length < n) {
+        d.unshift(0);
+    }
+
+    d = String.fromCharCode.apply(String, d);
+
+    if (d.length < 2 * hashLen + 2) {
+        throw "Cipher too short";
+    }
+
+    var maskedSeed = d.substr(1, hashLen)
+    var maskedDB = d.substr(hashLen + 1);
+
+    var seedMask = oaep_mgf1_str(maskedDB, hashLen, hash);
+    var seed = [], i;
+
+    for (i = 0; i < maskedSeed.length; i += 1) {
+        seed[i] = maskedSeed.charCodeAt(i) ^ seedMask.charCodeAt(i);
+    }
+
+    var dbMask = oaep_mgf1_str(String.fromCharCode.apply(String, seed),
+                               d.length - hashLen, hash);
+
+    var DB = [];
+
+    for (i = 0; i < maskedDB.length; i += 1) {
+        DB[i] = maskedDB.charCodeAt(i) ^ dbMask.charCodeAt(i);
+    }
+
+    DB = String.fromCharCode.apply(String, DB);
+
+    if (DB.substr(0, hashLen) !== hash('')) {
+        throw "Hash mismatch";
+    }
+
+    DB = DB.substr(hashLen);
+
+    var first_one = DB.indexOf('\x01');
+    var last_zero = (first_one != -1) ? DB.substr(0, first_one).lastIndexOf('\x00') : -1;
+
+    if (last_zero + 1 != first_one) {
+        throw "Malformed data";
+    }
+
+    return DB.substr(first_one + 1);
+}
+
+// Set the private key fields N, e, and d from hex strings
+function RSASetPrivate(N,E,D) {
+  this.isPrivate = true;
+  if (typeof N !== "string")
+  {
+    this.n = N;
+    this.e = E;
+    this.d = D;
+  }
+  else if(N != null && E != null && N.length > 0 && E.length > 0) {
+    this.n = parseBigInt(N,16);
+    this.e = parseInt(E,16);
+    this.d = parseBigInt(D,16);
+  }
+  else
+    alert("Invalid RSA private key");
+}
+
+// Set the private key fields N, e, d and CRT params from hex strings
+function RSASetPrivateEx(N,E,D,P,Q,DP,DQ,C) {
+  this.isPrivate = true;
+  if (N == null) throw "RSASetPrivateEx N == null";
+  if (E == null) throw "RSASetPrivateEx E == null";
+  if (N.length == 0) throw "RSASetPrivateEx N.length == 0";
+  if (E.length == 0) throw "RSASetPrivateEx E.length == 0";
+
+  if (N != null && E != null && N.length > 0 && E.length > 0) {
+    this.n = parseBigInt(N,16);
+    this.e = parseInt(E,16);
+    this.d = parseBigInt(D,16);
+    this.p = parseBigInt(P,16);
+    this.q = parseBigInt(Q,16);
+    this.dmp1 = parseBigInt(DP,16);
+    this.dmq1 = parseBigInt(DQ,16);
+    this.coeff = parseBigInt(C,16);
+  } else {
+    alert("Invalid RSA private key in RSASetPrivateEx");
+  }
+}
+
+// Generate a new random private key B bits long, using public expt E
+function RSAGenerate(B,E) {
+  var rng = new SecureRandom();
+  var qs = B>>1;
+  this.e = parseInt(E,16);
+  var ee = new BigInteger(E,16);
+  for(;;) {
+    for(;;) {
+      this.p = new BigInteger(B-qs,1,rng);
+      if(this.p.subtract(BigInteger.ONE).gcd(ee).compareTo(BigInteger.ONE) == 0 && this.p.isProbablePrime(10)) break;
+    }
+    for(;;) {
+      this.q = new BigInteger(qs,1,rng);
+      if(this.q.subtract(BigInteger.ONE).gcd(ee).compareTo(BigInteger.ONE) == 0 && this.q.isProbablePrime(10)) break;
+    }
+    if(this.p.compareTo(this.q) <= 0) {
+      var t = this.p;
+      this.p = this.q;
+      this.q = t;
+    }
+    var p1 = this.p.subtract(BigInteger.ONE);	// p1 = p - 1
+    var q1 = this.q.subtract(BigInteger.ONE);	// q1 = q - 1
+    var phi = p1.multiply(q1);
+    if(phi.gcd(ee).compareTo(BigInteger.ONE) == 0) {
+      this.n = this.p.multiply(this.q);	// this.n = p * q
+      this.d = ee.modInverse(phi);	// this.d = 
+      this.dmp1 = this.d.mod(p1);	// this.dmp1 = d mod (p - 1)
+      this.dmq1 = this.d.mod(q1);	// this.dmq1 = d mod (q - 1)
+      this.coeff = this.q.modInverse(this.p);	// this.coeff = (q ^ -1) mod p
+      break;
+    }
+  }
+  this.isPrivate = true;
+}
+
+// Perform raw private operation on "x": return x^d (mod n)
+function RSADoPrivate(x) {
+  if(this.p == null || this.q == null)
+    return x.modPow(this.d, this.n);
+
+  // TODO: re-calculate any missing CRT params
+  var xp = x.mod(this.p).modPow(this.dmp1, this.p); // xp=cp?
+  var xq = x.mod(this.q).modPow(this.dmq1, this.q); // xq=cq?
+
+  while(xp.compareTo(xq) < 0)
+    xp = xp.add(this.p);
+  // NOTE:
+  // xp.subtract(xq) => cp -cq
+  // xp.subtract(xq).multiply(this.coeff).mod(this.p) => (cp - cq) * u mod p = h
+  // xp.subtract(xq).multiply(this.coeff).mod(this.p).multiply(this.q).add(xq) => cq + (h * q) = M
+  return xp.subtract(xq).multiply(this.coeff).mod(this.p).multiply(this.q).add(xq);
+}
+
+// Return the PKCS#1 RSA decryption of "ctext".
+// "ctext" is an even-length hex string and the output is a plain string.
+function RSADecrypt(ctext) {
+  var c = parseBigInt(ctext, 16);
+  var m = this.doPrivate(c);
+  if(m == null) return null;
+  return pkcs1unpad2(m, (this.n.bitLength()+7)>>3);
+}
+
+// Return the PKCS#1 OAEP RSA decryption of "ctext".
+// "ctext" is an even-length hex string and the output is a plain string.
+function RSADecryptOAEP(ctext, hash, hashLen) {
+  var c = parseBigInt(ctext, 16);
+  var m = this.doPrivate(c);
+  if(m == null) return null;
+  return oaep_unpad(m, (this.n.bitLength()+7)>>3, hash, hashLen);
+}
+
+// Return the PKCS#1 RSA decryption of "ctext".
+// "ctext" is a Base64-encoded string and the output is a plain string.
+//function RSAB64Decrypt(ctext) {
+//  var h = b64tohex(ctext);
+//  if(h) return this.decrypt(h); else return null;
+//}
+
+// protected
+RSAKey.prototype.doPrivate = RSADoPrivate;
+
+// public
+RSAKey.prototype.setPrivate = RSASetPrivate;
+RSAKey.prototype.setPrivateEx = RSASetPrivateEx;
+RSAKey.prototype.generate = RSAGenerate;
+RSAKey.prototype.decrypt = RSADecrypt;
+RSAKey.prototype.decryptOAEP = RSADecryptOAEP;
+//RSAKey.prototype.b64_decrypt = RSAB64Decrypt;
 
 /*! dsa-modified-1.0.1.js (c) Recurity Labs GmbH, Kenji Urushimma | github.com/openpgpjs/openpgpjs/blob/master/LICENSE
  */
@@ -17705,116 +17926,6 @@ ECPointFp.prototype.validate = function () {
 
   return true;
 };
-
-/*
-CryptoJS v3.1.2
-code.google.com/p/crypto-js
-(c) 2009-2013 by Jeff Mott. All rights reserved.
-code.google.com/p/crypto-js/wiki/License
-*/
-(function () {
-    // Shortcuts
-    var C = CryptoJS;
-    var C_lib = C.lib;
-    var WordArray = C_lib.WordArray;
-    var C_enc = C.enc;
-
-    /**
-     * Base64 encoding strategy.
-     */
-    var Base64 = C_enc.Base64 = {
-        /**
-         * Converts a word array to a Base64 string.
-         *
-         * @param {WordArray} wordArray The word array.
-         *
-         * @return {string} The Base64 string.
-         *
-         * @static
-         *
-         * @example
-         *
-         *     var base64String = CryptoJS.enc.Base64.stringify(wordArray);
-         */
-        stringify: function (wordArray) {
-            // Shortcuts
-            var words = wordArray.words;
-            var sigBytes = wordArray.sigBytes;
-            var map = this._map;
-
-            // Clamp excess bits
-            wordArray.clamp();
-
-            // Convert
-            var base64Chars = [];
-            for (var i = 0; i < sigBytes; i += 3) {
-                var byte1 = (words[i >>> 2]       >>> (24 - (i % 4) * 8))       & 0xff;
-                var byte2 = (words[(i + 1) >>> 2] >>> (24 - ((i + 1) % 4) * 8)) & 0xff;
-                var byte3 = (words[(i + 2) >>> 2] >>> (24 - ((i + 2) % 4) * 8)) & 0xff;
-
-                var triplet = (byte1 << 16) | (byte2 << 8) | byte3;
-
-                for (var j = 0; (j < 4) && (i + j * 0.75 < sigBytes); j++) {
-                    base64Chars.push(map.charAt((triplet >>> (6 * (3 - j))) & 0x3f));
-                }
-            }
-
-            // Add padding
-            var paddingChar = map.charAt(64);
-            if (paddingChar) {
-                while (base64Chars.length % 4) {
-                    base64Chars.push(paddingChar);
-                }
-            }
-
-            return base64Chars.join('');
-        },
-
-        /**
-         * Converts a Base64 string to a word array.
-         *
-         * @param {string} base64Str The Base64 string.
-         *
-         * @return {WordArray} The word array.
-         *
-         * @static
-         *
-         * @example
-         *
-         *     var wordArray = CryptoJS.enc.Base64.parse(base64String);
-         */
-        parse: function (base64Str) {
-            // Shortcuts
-            var base64StrLength = base64Str.length;
-            var map = this._map;
-
-            // Ignore padding
-            var paddingChar = map.charAt(64);
-            if (paddingChar) {
-                var paddingIndex = base64Str.indexOf(paddingChar);
-                if (paddingIndex != -1) {
-                    base64StrLength = paddingIndex;
-                }
-            }
-
-            // Convert
-            var words = [];
-            var nBytes = 0;
-            for (var i = 0; i < base64StrLength; i++) {
-                if (i % 4) {
-                    var bits1 = map.indexOf(base64Str.charAt(i - 1)) << ((i % 4) * 2);
-                    var bits2 = map.indexOf(base64Str.charAt(i)) >>> (6 - (i % 4) * 2);
-                    words[nBytes >>> 2] |= (bits1 | bits2) << (24 - (nBytes % 4) * 8);
-                    nBytes++;
-                }
-            }
-
-            return WordArray.create(words, nBytes);
-        },
-
-        _map: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
-    };
-}());
 
 /*
 CryptoJS v3.1.2
@@ -28735,7 +28846,7 @@ function IntegerParse(n) {
  * @return {[type]}           [返回加密后的数据 hex]
  */
 function sm2Encrypt(data, publickey, cipherMode) {
-    cipherMode = cipherMode == 0? cipherMode : 1;
+    cipherMode = cipherMode == 0 ? cipherMode : 1;
     //msg = SM2.utf8tob64(msg);
     var msgData = CryptoJS.enc.Utf8.parse(data);
 
@@ -28754,7 +28865,7 @@ function sm2Encrypt(data, publickey, cipherMode) {
     msgData = cipher.GetWords(msgData.toString());
 
     var encryptData = cipher.Encrypt(userKey, msgData);
-    return '04'+encryptData;
+    return '04' + encryptData;
 }
 
 /**
@@ -28766,7 +28877,7 @@ function sm2Encrypt(data, publickey, cipherMode) {
  */
 
 function sm2Decrypt(encrypted, privateKey, cipherMode) {
-    cipherMode = cipherMode == 0? cipherMode : 1;
+    cipherMode = cipherMode == 0 ? cipherMode : 1;
     encrypted = encrypted.substr(2);
     //privateKey = b64tohex(privateKey);
     var privKey = new BigInteger(privateKey, 16);
@@ -28783,96 +28894,95 @@ function sm2Decrypt(encrypted, privateKey, cipherMode) {
  * @return {[type]}            [返回加密后的数据 hex]
  */
 function sm2CertCrypt(data, certData, cipherMode) {
-  cipherMode = cipherMode == 0? cipherMode : 1;
-  var key = "";
-  //证书数据
-  if( certData != "") {
-    //通过证书获取key
-    key = X509.getPublicKeyFromCertPEM(certData);
-  }
+    cipherMode = cipherMode == 0 ? cipherMode : 1;
+    var key = "";
+    //证书数据
+    if (certData != "") {
+        //通过证书获取key
+        key = X509.getPublicKeyFromCertPEM(certData);
+    }
 
-  var pubkey = key.replace(/\s/g,'');
-
-
-  var pubkeyHex = pubkey;
-  if (pubkeyHex.length > 64 * 2) {
-    pubkeyHex = pubkeyHex.substr(pubkeyHex.length - 64 * 2);
-  }
-
-  var xHex = pubkeyHex.substr(0, 64);
-  var yHex = pubkeyHex.substr(64);
+    var pubkey = key.replace(/\s/g, '');
 
 
-  var cipher = new SM2Cipher(cipherMode);
-  var userKey = cipher.CreatePoint(xHex, yHex);
+    var pubkeyHex = pubkey;
+    if (pubkeyHex.length > 64 * 2) {
+        pubkeyHex = pubkeyHex.substr(pubkeyHex.length - 64 * 2);
+    }
 
-  var msgData = CryptoJS.enc.Utf8.parse(data);
-  msgData = cipher.GetWords(msgData.toString());
+    var xHex = pubkeyHex.substr(0, 64);
+    var yHex = pubkeyHex.substr(64);
 
-  var encryptData = cipher.Encrypt(userKey, msgData);
-  return encryptData;
+
+    var cipher = new SM2Cipher(cipherMode);
+    var userKey = cipher.CreatePoint(xHex, yHex);
+
+    var msgData = CryptoJS.enc.Utf8.parse(data);
+    msgData = cipher.GetWords(msgData.toString());
+
+    var encryptData = cipher.Encrypt(userKey, msgData);
+    return encryptData;
 }
 
-exports.SecureRandom = SecureRandom;
-exports.rng_seed_time = rng_seed_time;
+// exports.SecureRandom = SecureRandom;
+// exports.rng_seed_time = rng_seed_time;
 
-exports.BigInteger = BigInteger;
-exports.RSAKey = RSAKey;
-exports.ECDSA = KJUR.crypto.ECDSA;
-exports.DSA = KJUR.crypto.DSA;
-exports.Signature = KJUR.crypto.Signature;
-exports.MessageDigest = KJUR.crypto.MessageDigest;
-exports.Mac = KJUR.crypto.Mac;
-exports.Cipher = KJUR.crypto.Cipher;
-exports.KEYUTIL = KEYUTIL;
-exports.ASN1HEX = ASN1HEX;
-exports.X509 = X509;
-exports.CryptoJS = CryptoJS;
+// exports.BigInteger = BigInteger;
+// exports.RSAKey = RSAKey;
+// exports.ECDSA = KJUR.crypto.ECDSA;
+// exports.DSA = KJUR.crypto.DSA;
+// exports.Signature = KJUR.crypto.Signature;
+// exports.MessageDigest = KJUR.crypto.MessageDigest;
+// exports.Mac = KJUR.crypto.Mac;
+// exports.Cipher = KJUR.crypto.Cipher;
+// exports.KEYUTIL = KEYUTIL;
+// exports.ASN1HEX = ASN1HEX;
+// exports.X509 = X509;
+// exports.CryptoJS = CryptoJS;
 
-// ext/base64.js
-exports.b64tohex = b64tohex;
-exports.b64toBA = b64toBA;
+// // ext/base64.js
+// exports.b64tohex = b64tohex;
+// exports.b64toBA = b64toBA;
 
-// base64x.js
-exports.stoBA = stoBA;
-exports.BAtos = BAtos;
-exports.BAtohex = BAtohex;
-exports.stohex = stohex;
-exports.stob64 = stob64;
-exports.stob64u = stob64u;
-exports.b64utos = b64utos;
-exports.b64tob64u = b64tob64u;
-exports.b64utob64 = b64utob64;
-exports.hex2b64 = hex2b64;
-exports.hextob64u = hextob64u;
-exports.b64utohex = b64utohex;
-//exports.b64tohex = b64tohex;
-exports.utf8tob64u = utf8tob64u;
-exports.b64utoutf8 = b64utoutf8;
-exports.utf8tob64 = utf8tob64;
-exports.b64toutf8 = b64toutf8;
-exports.utf8tohex = utf8tohex;
-exports.hextoutf8 = hextoutf8;
-exports.hextorstr = hextorstr;
-exports.rstrtohex = rstrtohex;
-exports.newline_toUnix = newline_toUnix;
-exports.newline_toDos = newline_toDos;
-exports.intarystrtohex = intarystrtohex;
-exports.strdiffidx = strdiffidx;
-exports.hextob64 = hextob64;
-exports.hextob64nl = hextob64nl;
-exports.b64nltohex = b64nltohex;
-exports.hextoArrayBuffer = hextoArrayBuffer;
-exports.ArrayBuffertohex = ArrayBuffertohex;
+// // base64x.js
+// exports.stoBA = stoBA;
+// exports.BAtos = BAtos;
+// exports.BAtohex = BAtohex;
+// exports.stohex = stohex;
+// exports.stob64 = stob64;
+// exports.stob64u = stob64u;
+// exports.b64utos = b64utos;
+// exports.b64tob64u = b64tob64u;
+// exports.b64utob64 = b64utob64;
+// exports.hex2b64 = hex2b64;
+// exports.hextob64u = hextob64u;
+// exports.b64utohex = b64utohex;
+// //exports.b64tohex = b64tohex;
+// exports.utf8tob64u = utf8tob64u;
+// exports.b64utoutf8 = b64utoutf8;
+// exports.utf8tob64 = utf8tob64;
+// exports.b64toutf8 = b64toutf8;
+// exports.utf8tohex = utf8tohex;
+// exports.hextoutf8 = hextoutf8;
+// exports.hextorstr = hextorstr;
+// exports.rstrtohex = rstrtohex;
+// exports.newline_toUnix = newline_toUnix;
+// exports.newline_toDos = newline_toDos;
+// exports.intarystrtohex = intarystrtohex;
+// exports.strdiffidx = strdiffidx;
+// exports.hextob64 = hextob64;
+// exports.hextob64nl = hextob64nl;
+// exports.b64nltohex = b64nltohex;
+// exports.hextoArrayBuffer = hextoArrayBuffer;
+// exports.ArrayBuffertohex = ArrayBuffertohex;
 
-// name spaces
-exports.KJUR = KJUR;
-exports.crypto = KJUR.crypto;
-exports.asn1 = KJUR.asn1;
-exports.jws = KJUR.jws;
-exports.lang = KJUR.lang;
-exports.SM2Cipher = SM2Cipher;
-exports.sm2Encrypt = sm2Encrypt;
-exports.sm2Decrypt = sm2Decrypt;
-exports.sm2CertCrypt = sm2CertCrypt;
-
+// // name spaces
+// exports.KJUR = KJUR;
+// exports.crypto = KJUR.crypto;
+// exports.asn1 = KJUR.asn1;
+// exports.jws = KJUR.jws;
+// exports.lang = KJUR.lang;
+// exports.SM2Cipher = SM2Cipher;
+// exports.sm2Encrypt = sm2Encrypt;
+// exports.sm2Decrypt = sm2Decrypt;
+// exports.sm2CertCrypt = sm2CertCrypt;

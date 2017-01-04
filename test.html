@@ -1,157 +1,200 @@
-
 <!DOCTYPE html>
 <html>
 
-  <head>
+<head>
     <meta http-equiv="X-UA-Compatible" content="chrome=1" />
     <meta name="description" content="JavaScript implementation of SM2 Algorithm Encryption and Decryption sample." />
-  
+
     <!--<link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">-->
     <title>SM2 Algorithm Encryption and Decryption sample</title>
-  
-<!-- for pkcs5pkey -->
-<script src="build/index.js"></script>
-<script language="JavaScript" type="text/javascript">
 
-function doGenerate() {
-  var f1 = document.form1;
-  var curve = f1.curve1.value;
-  var ec = new KJUR.crypto.ECDSA({"curve": curve});
-  var keypair = ec.generateKeyPairHex();
+    <!-- for pkcs5pkey -->
+    <script src="build/index.js"></script>
+    <script language="JavaScript" type="text/javascript">
+        function doGenerate() {
+            var f1 = document.form1;
+            var curve = f1.curve1.value;
+            var ec = new KJUR.crypto.ECDSA({
+                "curve": curve
+            });
+            var keypair = ec.generateKeyPairHex();
 
-  f1.prvkey1.value = keypair.ecprvhex;
-  f1.pubkey1.value = keypair.ecpubhex;
-}
+            f1.prvkey1.value = keypair.ecprvhex;
+            f1.pubkey1.value = keypair.ecpubhex;
+            testAes();
 
+        }
 
+        function testAes() {
+            var encrypted = aesEcrypt('初吕不韦既把持朝廷，又与太后（赵姬）偷情。[15]  后见秦王政日秦始皇画像秦始皇画像(10张)渐年长，怕被他发现，想离开太后，又怕太后怨恨，所以便把自己的门客嫪毐假施腐刑，只拔掉胡须、眉毛就献给太后，供其淫乐。[16]  秦王政渐长，于是他们就骗他说太后寝宫风水不好，应搬离这里。[17]  秦王政信以为真，于是他们搬到雍县的离宫，结果太后生下了两个私生子，[18]  而嫪毐也以秦王政假父自居，嫪毐在一次喝醉酒后对一个大臣斥责道：“我是秦王的假父，你竟敢惹我。”这个大臣听后很生气，并且暗中找了个机会把嫪毐和太后的关系告诉秦王政，秦王政得知后非常生气，嫪毐慌了，准备叛乱[19]  。而嫪毐在太后的帮助下被封为长信侯，领有山阳、太原等地，自收党羽。嫪毐在雍城长年经营，建立了庞大的势力，[20-21]  是秦国中仅次于吕不韦的一股强大的政治势力。', '1234567812345678', '1234567812345678');
+            console.log(encrypted);
+            var deCrypted = aesDeEcrypt(encrypted, '1234567812345678', '1234567812345678');
+            console.log(deCrypted.toString(CryptoJS.enc.Utf8));
+        }
 
-function doCrypt() {
-    var f1 = document.form1;
-    
-    var curve = f1.curve1.value;
-    var msg = f1.msg1.value;
-    var pubkeyHex = f1.pubkey1.value;
-    var encryptData = sm2Encrypt(msg, pubkeyHex);
-    f1.sigval1.value = encryptData;
-}
-function doDecrypt(encrypData) {
-    var f1 = document.form1;
-    var prvkey = f1.prvkey1.value;
-    encrypData = encrypData||f1.sigval1.value;
-  
-    var data = sm2Decrypt(encrypData, prvkey);
-  
-    console.log(data);
-}
+        function aesEcrypt(data, keyStr, ivStr) {
+            // 将数据数据进行 utf-8 格式
+            var sendData = CryptoJS.enc.Utf8.parse(data);
+            var key = CryptoJS.enc.Utf8.parse(keyStr);
+            var iv = CryptoJS.enc.Utf8.parse(ivStr);
+            //对数据进行aes加密
+            var aesEcryptData = CryptoJS.AES.encrypt(data, key, {
+                iv: iv,
+                mode: CryptoJS.mode.CBC,
+                padding: CryptoJS.pad.Pkcs7
+            });
+            //对加密后的数据进行 Base64转换
+            return CryptoJS.enc.Base64.stringify(aesEcryptData.ciphertext);
+        }
 
-</script>
-  </head>
+        function aesDeEcrypt(deData, keyStr, ivStr) {
+            var decryptData = CryptoJS.enc.Base64.parse(deData);
+            console.log(decryptData);
+            var key = CryptoJS.enc.Utf8.parse(keyStr);
+            var iv = CryptoJS.enc.Utf8.parse(ivStr);
+            try {
+                var deEcrypData = CryptoJS.AES.decrypt(decryptData, key, {
+                    iv: iv,
+                    mode: CryptoJS.mode.CBC,
+                    padding: CryptoJS.pad.Pkcs7
+                });
+                return deEcrypData.toString(CryptoJS.enc.Utf8);
+            } catch (e) {
+                console.log(e);
+                return JSON.stringify({
+                    Code: 91,
+                    message: '解密失败'
+                });
+            }
+        }
 
-  <body>
+        function doCrypt() {
+            var f1 = document.form1;
+
+            var curve = f1.curve1.value;
+            var msg = f1.msg1.value;
+            var pubkeyHex = f1.pubkey1.value;
+            var encryptData = sm2Encrypt(msg, pubkeyHex);
+            f1.sigval1.value = encryptData;
+        }
+
+        function doDecrypt(encrypData) {
+            var f1 = document.form1;
+            var prvkey = f1.prvkey1.value;
+            encrypData = encrypData || f1.sigval1.value;
+
+            var data = sm2Decrypt(encrypData, prvkey);
+
+            console.log(data);
+        }
+    </script>
+</head>
+
+<body>
 
     <!-- HEADER -->
     <div id="header_wrap" class="outer">
         <header class="inner">
-          <h1 id="project_title">SM2 Algorithm Encryption and Decryption sample</h1>
-          <h2 id="project_tagline">generating SM2 keypair, SM2 Algorithm Encryption and Decryption</h2>
-      <a href="http://www.jonllen.com">Home</a> | 
-          <a href="sample-sm2.html">SM2 sample</a> | 
-          <a href="sample-sm2_tool.html" >SM2 Cert Verifcation</a> | 
-          <a href="sample-sm2_crypt.html">SM2 Encryption and Decryption sample</a>
+            <h1 id="project_title">SM2 Algorithm Encryption and Decryption sample</h1>
+            <h2 id="project_tagline">generating SM2 keypair, SM2 Algorithm Encryption and Decryption</h2>
+            <a href="http://www.jonllen.com">Home</a> |
+            <a href="sample-sm2.html">SM2 sample</a> |
+            <a href="sample-sm2_tool.html">SM2 Cert Verifcation</a> |
+            <a href="sample-sm2_crypt.html">SM2 Encryption and Decryption sample</a>
         </header>
     </div>
 
     <!-- MAIN CONTENT -->
     <div id="main_content_wrap" class="outer">
-      <section id="main_content" class="inner">
+        <section id="main_content" class="inner">
 
-<script type="text/javascript">
-  if(/msie/.test( navigator.userAgent.toLowerCase() )){ document.write("<p><em>若IE浏览器下提示停止运行此脚本，请选择<b>否(N)</b>继续运行。</em></p>");}
-</script>
-  
-<!-- now editing -->
-<form name="form1">
-<h4>(Step1) choose supported EC curve name and generate key pair</h4>
-ECC curve name: 
-<select name="curve1">
+            <script type="text/javascript">
+                if (/msie/.test(navigator.userAgent.toLowerCase())) {
+                    document.write("<p><em>若IE浏览器下提示停止运行此脚本，请选择<b>否(N)</b>继续运行。</em></p>");
+                }
+            </script>
+
+            <!-- now editing -->
+            <form name="form1">
+                <h4>(Step1) choose supported EC curve name and generate key pair</h4>
+                ECC curve name:
+                <select name="curve1">
 <option value="sm2">SM2
 <option value="secp256r1">secp256r1 (= NIST P-256, P-256, prime256v1)
 <option value="secp256k1">secp256k1
 <option value="secp384r1">secp384r1 (= NIST P-384, P-384)
 </select><br/>
-<input type="button" value="generate EC key pair" onClick="doGenerate();"/><br/>
-<p>
-EC private key (hex): <input type="text" name="prvkey1" value="" size="100"/><br/>
-EC public key (hex): <input type="text" name="pubkey1" value="" size="100"/><br/>
-</p>
+                <input type="button" value="generate EC key pair" onClick="doGenerate();" /><br/>
+                <p>
+                    EC private key (hex): <input type="text" name="prvkey1" value="" size="100" /><br/> EC public key (hex): <input type="text" name="pubkey1" value="" size="100" /><br/>
+                </p>
 
-<!-- ============================================================== -->
+                <!-- ============================================================== -->
 
-<h4>(Step2) Crypt message</h4>
-Crypt Options: 
-<select id="cipherMode" name="cipherMode">
+                <h4>(Step2) Crypt message</h4>
+                Crypt Options:
+                <select id="cipherMode" name="cipherMode">
 <option value="1" selected="selected">C1C3C2
 <option value="0">C1C2C3
-</select><br/>
+</select><br/> Message string to be Crypted:
+                <input type="text" name="msg1" value="hello world" size="100" /><br/>
+                <input type="button" value="Crypt message" onClick="doCrypt();" /><br/>
+                <p>
+                    Crypt value (hex): <input type="text" id="sigval1" name="sigval1" value="" size="100" /><br/>
+                </p>
 
-Message string to be Crypted: 
-<input type="text" name="msg1" value="hello world" size="100"/><br/>
-<input type="button" value="Crypt message" onClick="doCrypt();"/><br/>
-<p>
-Crypt value (hex): <input type="text" id="sigval1" name="sigval1" value="" size="100"/><br/>
-</p>
+                <h4>(Step3) Decrypt message</h4>
+                <input type="button" value="decrypt it!" onClick="doDecrypt();" />
+                <input type="reset" value="reset" />
 
-<h4>(Step3) Decrypt message</h4>
-<input type="button" value="decrypt it!" onClick="doDecrypt();"/>
-<input type="reset" value="reset"/>
+            </form>
+            <!-- now editing -->
 
-</form>
-<!-- now editing -->
+        </section>
 
-      </section>
-    
-    <section class="inner">
-      <hr size="1" />
-      <h4>SM2 Certificate Encryption</h4>
-        <fieldset>
-            <legend>SM2证书加密</legend>
-            <ul>
-                <li>
-                    <label>原始数据：<input type="text" id="txtRawData"  size="80" 
+        <section class="inner">
+            <hr size="1" />
+            <h4>SM2 Certificate Encryption</h4>
+            <fieldset>
+                <legend>SM2证书加密</legend>
+                <ul>
+                    <li>
+                        <label>原始数据：<input type="text" id="txtRawData"  size="80" 
            value="jonllen" /></label>
-                </li>
-        <li>
-                    <label>证书数据：<textarea id="txtCertData" style="width:500px; height:40px;">MIICQDCCAeWgAwIBAgIQG2THdO0arf/KaLKoTVlCOzAMBggqgRzPVQGDdQUAMB8xEDAOBgNVBAMMB1NNMlJPT1QxCzAJBgNVBAYTAkNOMB4XDTE0MDYxODEzNTgzNVoXDTE2MDYxODEzNTgzNVowZTEiMCAGCSqGSIb3DQEJARYTam9ubGxlbkBob3RtYWlsLmNvbTEPMA0GA1UEBwwG6ZW/5rKZMQ8wDQYDVQQIDAbmuZbljZcxCzAJBgNVBAYTAkNOMRAwDgYDVQQDDAdKb25sbGVuMFkwEwYHKoZIzj0CAQYIKoEcz1UBgi0DQgAEXLAuT39XB5LJmTprFiGLPfqZl5tyGm1n9oXSVDrGRP2RfQRJOqD6cH6PEvmGhM1ydJv0iQMg2mvh6PjAlm58W6OBujCBtzAMBgNVHRMBAf8EAjAAMB0GA1UdDgQWBBQstXX3UIwlBK9k70GJYGM8mjG6gTAfBgNVHSMEGDAWgBQ/LpOmNnAJt7mAwIZpsX3cnqlkqjBCBggrBgEFBQcBAQQ2MDQwMgYIKwYBBQUHMAKGJmh0dHA6Ly9sb2NhbGhvc3QvUEtJL2NlcnRzL0RTQVJPT1QuY3J0MA4GA1UdDwEB/wQEAwIE8DATBgNVHSUEDDAKBggrBgEFBQcDAjAMBggqgRzPVQGDdQUAA0cAMEQCIBJO7K/XDt+igzKkWSkbRKZRtQKsS1i2Fmdp2Ar5EEL+AiA759mE/uINaEC7sMXOoqzTzkLCMIHGyLi80j0dG5pjow==</textarea>
+                    </li>
+                    <li>
+                        <label>证书数据：<textarea id="txtCertData" style="width:500px; height:40px;">MIICQDCCAeWgAwIBAgIQG2THdO0arf/KaLKoTVlCOzAMBggqgRzPVQGDdQUAMB8xEDAOBgNVBAMMB1NNMlJPT1QxCzAJBgNVBAYTAkNOMB4XDTE0MDYxODEzNTgzNVoXDTE2MDYxODEzNTgzNVowZTEiMCAGCSqGSIb3DQEJARYTam9ubGxlbkBob3RtYWlsLmNvbTEPMA0GA1UEBwwG6ZW/5rKZMQ8wDQYDVQQIDAbmuZbljZcxCzAJBgNVBAYTAkNOMRAwDgYDVQQDDAdKb25sbGVuMFkwEwYHKoZIzj0CAQYIKoEcz1UBgi0DQgAEXLAuT39XB5LJmTprFiGLPfqZl5tyGm1n9oXSVDrGRP2RfQRJOqD6cH6PEvmGhM1ydJv0iQMg2mvh6PjAlm58W6OBujCBtzAMBgNVHRMBAf8EAjAAMB0GA1UdDgQWBBQstXX3UIwlBK9k70GJYGM8mjG6gTAfBgNVHSMEGDAWgBQ/LpOmNnAJt7mAwIZpsX3cnqlkqjBCBggrBgEFBQcBAQQ2MDQwMgYIKwYBBQUHMAKGJmh0dHA6Ly9sb2NhbGhvc3QvUEtJL2NlcnRzL0RTQVJPT1QuY3J0MA4GA1UdDwEB/wQEAwIE8DATBgNVHSUEDDAKBggrBgEFBQcDAjAMBggqgRzPVQGDdQUAA0cAMEQCIBJO7K/XDt+igzKkWSkbRKZRtQKsS1i2Fmdp2Ar5EEL+AiA759mE/uINaEC7sMXOoqzTzkLCMIHGyLi80j0dG5pjow==</textarea>
             <em>base64编码格式</em>
           </label>
-                </li>
-                <li style="display:none">
-                    <label>证书公钥：<input type="text" id="txtPubKey" size="120" 
+                    </li>
+                    <li style="display:none">
+                        <label>证书公钥：<input type="text" id="txtPubKey" size="120" 
            value="" /></label>
-                </li>
-        <li>
-          <input type="button" value="加密" onClick="certCrypt();" />
-        </li>
-                <li>
-                    <label>加密后数据：<textarea id="txtCryptData" readonly="readonly" style="width:500px; height:40px;"></textarea><em>base64编码格式</em>
+                    </li>
+                    <li>
+                        <input type="button" value="加密" onClick="certCrypt();" />
+                    </li>
+                    <li>
+                        <label>加密后数据：<textarea id="txtCryptData" readonly="readonly" style="width:500px; height:40px;"></textarea><em>base64编码格式</em>
            </label>
-                </li>
-        
-            </ul>
-            <div>
-                
-            </div>
-        </fieldset>
-      </section>
-    
+                    </li>
+
+                </ul>
+                <div>
+
+                </div>
+            </fieldset>
+        </section>
+
     </div>
 
     <!-- FOOTER  -->
     <div id="footer_wrap" class="outer">
-      <footer class="inner">
-        <p>Powered By <a href="http://www.jonllen.com/" target="_blank">Jonllen</a></p>
-      </footer>
+        <footer class="inner">
+            <p>Powered By <a href="http://www.jonllen.com/" target="_blank">Jonllen</a></p>
+        </footer>
     </div>
 
-  </body>
+</body>
+
 </html>
