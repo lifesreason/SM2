@@ -2,6 +2,7 @@ var gulp = require('gulp'),
     gulpLoadPlugins = require('gulp-load-plugins'),
     plugins = gulpLoadPlugins();
 var clean = require('gulp-clean');
+var babel = require('gulp-babel')
 //jshint = require('gulp-jshint'),
 gulp.task('clean', function() {
     return gulp.src('build/')
@@ -66,6 +67,9 @@ gulp.task('js', function() {
         // .pipe(plugins.jshint())
         // .pipe(plugins.jshint.reporter('default'))
         //.pipe(plugins.uglify())
+        .pipe(babel({
+            presets: ['babel-preset-env']
+        }))
         .pipe(plugins.concat('index.js'))
         .pipe(gulp.dest('build'));
 });
