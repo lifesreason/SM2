@@ -27882,7 +27882,7 @@ function SM2Cipher(cipherMode) {
     }
 }
 SM2Cipher.prototype = {
-    getHexString(h) {
+    getHexString: function (h) {
         if((h.length & 1) == 0){
 
          return h; 

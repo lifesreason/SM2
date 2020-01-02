@@ -12,7 +12,7 @@ function SM2Cipher(cipherMode) {
     }
 }
 SM2Cipher.prototype = {
-    getHexString(h) {
+    getHexString: function (h) {
         if((h.length & 1) == 0) return h; else return "0" + h;
     },
     hex2Byte: function (n) {
